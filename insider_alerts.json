@@ -1,0 +1,433 @@
+{
+  "alerts": [],
+  "trader_profiles": {},
+  "monitored_markets": {
+    "fed-increases-interest-rates-by-25-bps-after-january-2026-meeting": {
+      "market_id": "fed-increases-interest-rates-by-25-bps-after-january-2026-meeting",
+      "question": "Fed increases interest rates by 25+ bps after January 2026 meeting?",
+      "token_id": "16419649354067298412736919830777830730026677464626899811394461690794060330642",
+      "volume": 109431815.69739,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "fed-decreases-interest-rates-by-50-bps-after-january-2026-meeting": {
+      "market_id": "fed-decreases-interest-rates-by-50-bps-after-january-2026-meeting",
+      "question": "Fed decreases interest rates by 50+ bps after January 2026 meeting?",
+      "token_id": "11862165566757345985240476164489718219056735011698825377388402888080786399275",
+      "volume": 117047918.89215,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "fed-decreases-interest-rates-by-25-bps-after-january-2026-meeting": {
+      "market_id": "fed-decreases-interest-rates-by-25-bps-after-january-2026-meeting",
+      "question": "Fed decreases interest rates by 25 bps after January 2026 meeting?",
+      "token_id": "92703761682322480664976766247614127878023988651992837287050266308961660624165",
+      "added_at": "2026-01-12T20:35:50Z"
+    },
+    "khamenei-out-as-supreme-leader-of-iran-by-january-31": {
+      "market_id": "khamenei-out-as-supreme-leader-of-iran-by-january-31",
+      "question": "Khamenei out as Supreme Leader of Iran by January 31?",
+      "token_id": "101434403359553929764780234916919166959889590658679054429843672204390513588056",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "no-change-in-fed-interest-rates-after-january-2026-meeting": {
+      "market_id": "no-change-in-fed-interest-rates-after-january-2026-meeting",
+      "question": "No change in Fed interest rates after January 2026 meeting?",
+      "token_id": "7321318078891059430231591636389479745928915782241484131001985601124919020061",
+      "added_at": "2026-01-12T20:36:09Z"
+    },
+    "will-meituan-have-the-best-ai-model-at-the-end-of-january-2026": {
+      "market_id": "will-meituan-have-the-best-ai-model-at-the-end-of-january-2026",
+      "question": "Will Meituan have the best AI model at the end of January 2026?",
+      "token_id": "55168552054795322689018727161320944577512426911787446544277373119717874724159",
+      "volume": 5490770.690541,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "elon-musk-of-tweets-january-9-january-16-300-319": {
+      "market_id": "elon-musk-of-tweets-january-9-january-16-300-319",
+      "question": "Will Elon Musk post 300-319 tweets from January 9 to January 16, 2026?",
+      "token_id": "108726369522978251318837189991377371853024644629279492628346937340838111469604",
+      "volume": 1143925.462968,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "russia-x-ukraine-ceasefire-by-january-31-2026": {
+      "market_id": "russia-x-ukraine-ceasefire-by-january-31-2026",
+      "question": "Russia x Ukraine ceasefire by January 31, 2026?",
+      "token_id": "14705029091296171110674089399091656949154521086160164017708184564241023149952",
+      "added_at": "2026-01-12T20:35:50Z"
+    },
+    "israel-strikes-iran-by-january-31-2026-894-994-453": {
+      "market_id": "israel-strikes-iran-by-january-31-2026-894-994-453",
+      "question": "Israel strikes Iran by January 31, 2026?",
+      "token_id": "15091760884604171309203489618212539770109612407760305338364320626709285790409",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "us-strikes-iran-by-january-31-2026-165-644-953": {
+      "market_id": "us-strikes-iran-by-january-31-2026-165-644-953",
+      "question": "US strikes Iran by January 31, 2026?",
+      "token_id": "13294549611854156060952327202052855585194847446707854951585060180328600525494",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-leeds-win-the-202526-english-premier-league": {
+      "market_id": "will-leeds-win-the-202526-english-premier-league",
+      "question": "Will Leeds win the 2025\u201326 English Premier League?",
+      "token_id": "76060545169704703774306339799160632690199220587187333652682231353030966296372",
+      "volume": 32655590.030948,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "us-strikes-iran-by-january-12-2026-314": {
+      "market_id": "us-strikes-iran-by-january-12-2026-314",
+      "question": "US strikes Iran by January 12, 2026?",
+      "token_id": "13635591301949462426793921685781414563337950940989455657835105912422609533050",
+      "added_at": "2026-01-12T20:36:09Z"
+    },
+    "elon-musk-of-tweets-january-6-january-13-500-519": {
+      "market_id": "elon-musk-of-tweets-january-6-january-13-500-519",
+      "question": "Will Elon Musk post 500-519 tweets from January 6 to January 13, 2026?",
+      "token_id": "28476908320614451508354406075440151536068474367670035891214063443226930490517",
+      "volume": 1289472.988644,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-trump-nominate-jerome-powell-as-the-next-fed-chair": {
+      "market_id": "will-trump-nominate-jerome-powell-as-the-next-fed-chair",
+      "question": "Will Trump nominate Jerome Powell as the next Fed chair?",
+      "token_id": "75562986572078747541577175725857968095799345857741050112699871710798605147441",
+      "volume": 4331014.588711,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "nba-uta-cle-2026-01-12": {
+      "market_id": "nba-uta-cle-2026-01-12",
+      "question": "Jazz vs. Cavaliers",
+      "token_id": "58251321027037009434013674484248704200580040970105478950016972925828140570370",
+      "added_at": "2026-01-12T20:35:04Z"
+    },
+    "nhl-sea-nyr-2026-01-12": {
+      "market_id": "nhl-sea-nyr-2026-01-12",
+      "question": "Kraken vs. Rangers",
+      "token_id": "73030882732820817251160453880762817387294253803655053570641347894902846769891",
+      "added_at": "2026-01-12T20:35:39Z"
+    },
+    "will-wolves-win-the-202526-english-premier-league": {
+      "market_id": "will-wolves-win-the-202526-english-premier-league",
+      "question": "Will Wolves win the 2025\u201326 English Premier League?",
+      "token_id": "56694658471602088190224805550575965966221261830236087557166619091181299504913",
+      "volume": 7600555.030202,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-trump-acquire-greenland-before-2027": {
+      "market_id": "will-trump-acquire-greenland-before-2027",
+      "question": "Will Trump acquire Greenland before 2027?",
+      "token_id": "5161623255678193352839985156330393796378434470119114669671615782853260939535",
+      "volume": 6605133.339106,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-burnley-win-the-202526-english-premier-league": {
+      "market_id": "will-burnley-win-the-202526-english-premier-league",
+      "question": "Will Burnley win the 2025\u201326 English Premier League?",
+      "token_id": "67123045871389679246998140061646090454954883230675879841111374449215992530761",
+      "volume": 5854491.107443,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "nfl-hou-pit-2026-01-12": {
+      "market_id": "nfl-hou-pit-2026-01-12",
+      "question": "Texans vs. Steelers",
+      "token_id": "74405919057031726591990777370595920590155604530765555705214385173695068665759",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-the-san-francisco-49ers-win-super-bowl-2026": {
+      "market_id": "will-the-san-francisco-49ers-win-super-bowl-2026",
+      "question": "Will the San Francisco 49ers win Super Bowl 2026?",
+      "token_id": "103964639796881000708283597869972982246291255020090641475005021108194817942325",
+      "added_at": "2026-01-12T20:36:09Z"
+    },
+    "us-strikes-iran-by-january-13-2026-771": {
+      "market_id": "us-strikes-iran-by-january-13-2026-771",
+      "question": "US strikes Iran by January 13, 2026?",
+      "token_id": "60372915345155031730275666528053985906403141215617526950460028144443852637171",
+      "added_at": "2026-01-12T20:36:09Z"
+    },
+    "will-the-iranian-regime-fall-by-january-31": {
+      "market_id": "will-the-iranian-regime-fall-by-january-31",
+      "question": "Will the Iranian regime fall by January 31?",
+      "token_id": "7658808656738124231655982304932115710649774031219112698093176227109214699054",
+      "added_at": "2026-01-12T20:36:09Z"
+    },
+    "will-west-ham-win-the-202526-english-premier-league": {
+      "market_id": "will-west-ham-win-the-202526-english-premier-league",
+      "question": "Will West Ham win the 2025\u201326 English Premier League?",
+      "token_id": "22372762924107607377389518493238055420245556927478205009020254863753681448011",
+      "volume": 10759645.263273,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "nfl-hou-pit-2026-01-12-total-38pt5": {
+      "market_id": "nfl-hou-pit-2026-01-12-total-38pt5",
+      "question": "Texans vs. Steelers: O/U 38.5",
+      "token_id": "27825540291941164716656953787158131288279384982281468642761895771420489266648",
+      "added_at": "2026-01-12T20:35:39Z"
+    },
+    "will-bitcoin-reach-150k-in-january-2026": {
+      "market_id": "will-bitcoin-reach-150k-in-january-2026",
+      "question": "Will Bitcoin reach $150,000 in January?",
+      "token_id": "53342136288932702007624506186417846874594504126387502748453102780630218207922",
+      "volume": 6112010.648431,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-andr-ventura-win-the-2026-portugal-presidential-election": {
+      "market_id": "will-andr-ventura-win-the-2026-portugal-presidential-election",
+      "question": "Will Andr\u00e9 Ventura win the 2026 Portugal presidential election?",
+      "token_id": "87048058140607839077917415447158941112086606824479198286281986963033007181784",
+      "added_at": "2026-01-12T20:35:50Z"
+    },
+    "us-strikes-iran-by-january-16-2026-498": {
+      "market_id": "us-strikes-iran-by-january-16-2026-498",
+      "question": "US strikes Iran by January 16, 2026?",
+      "token_id": "71245395341640282981822050245876486438708685626052577722484604820158902803989",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-union-saint-gilloise-win-the-202526-champions-league": {
+      "market_id": "will-union-saint-gilloise-win-the-202526-champions-league",
+      "question": "Will Union Saint-Gilloise win the 2025\u201326 Champions League?",
+      "token_id": "88649172527907989620879114192231078945535857485421163231800246014567503500944",
+      "volume": 11099812.985374,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-bitcoin-reach-100k-in-january-2026": {
+      "market_id": "will-bitcoin-reach-100k-in-january-2026",
+      "question": "Will Bitcoin reach $100,000 in January?",
+      "token_id": "103177127930055330392441373349372732434896433945295434937281341249293735506094",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "nhl-car-det-2026-01-12": {
+      "market_id": "nhl-car-det-2026-01-12",
+      "question": "Hurricanes vs. Red Wings",
+      "token_id": "17682136106171832244515050748757980247207929101255212587870654863977542587876",
+      "added_at": "2026-01-12T20:35:34Z"
+    },
+    "khamenei-out-as-supreme-leader-of-iran-by-march-31": {
+      "market_id": "khamenei-out-as-supreme-leader-of-iran-by-march-31",
+      "question": "Khamenei out as Supreme Leader of Iran by March 31?",
+      "token_id": "70771354585365381988139008309072205730081182435161568795508496003376222185889",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-nottm-forest-win-the-202526-english-premier-league": {
+      "market_id": "will-nottm-forest-win-the-202526-english-premier-league",
+      "question": "Will Nottm Forest win the 2025\u201326 English Premier League?",
+      "token_id": "32294324998358915087437480184802014472731161882287004932565606432510940160446",
+      "volume": 9294854.340474,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-mallorca-win-the-202526-la-liga": {
+      "market_id": "will-mallorca-win-the-202526-la-liga",
+      "question": "Will Mallorca win the 2025\u201326 La Liga?",
+      "token_id": "107730070120921326975458547565556522258151346670767146881297274797598153658544",
+      "volume": 3757634.153709,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-hillary-clinton-win-the-2028-democratic-presidential-nomination": {
+      "market_id": "will-hillary-clinton-win-the-2028-democratic-presidential-nomination",
+      "question": "Will Hillary Clinton win the 2028 Democratic presidential nomination?",
+      "token_id": "6349038249650226718426900942104344803413105653564595362433352811865798195800",
+      "volume": 21190285.923501,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "nhl-van-mon-2026-01-12": {
+      "market_id": "nhl-van-mon-2026-01-12",
+      "question": "Canucks vs. Canadiens",
+      "token_id": "11532487217012349950731581294891474083272003038938594317628890672924270944530",
+      "added_at": "2026-01-12T20:35:04Z"
+    },
+    "elon-musk-of-tweets-january-13-january-20-100-119": {
+      "market_id": "elon-musk-of-tweets-january-13-january-20-100-119",
+      "question": "Will Elon Musk post 100-119 tweets from January 13 to January 20, 2026?",
+      "token_id": "9273369452351439028008284342081203687872648294428817461043293340779136518137",
+      "volume": 678228.41725,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-the-utah-jazz-win-the-2026-nba-finals": {
+      "market_id": "will-the-utah-jazz-win-the-2026-nba-finals",
+      "question": "Will the Utah Jazz win the 2026 NBA Finals?",
+      "token_id": "53006315426468323724031258089790468729343421857824347432950535733105890769616",
+      "volume": 12399259.998791,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-raul-perestrello-win-the-2026-portugal-presidential-election": {
+      "market_id": "will-raul-perestrello-win-the-2026-portugal-presidential-election",
+      "question": "Will Raul Perestrello win the 2026 Portugal presidential election?",
+      "token_id": "100873440839630488787675306991927169852104936846951905917156069066481005498699",
+      "volume": 18803729.301092,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-everton-win-the-202526-english-premier-league": {
+      "market_id": "will-everton-win-the-202526-english-premier-league",
+      "question": "Will Everton win the 2025\u201326 English Premier League?",
+      "token_id": "50240481963838693523668316924245638787281721106369053980819373603183071761187",
+      "volume": 13322239.493773,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-jordan-win-the-2026-fifa-world-cup-233": {
+      "market_id": "will-jordan-win-the-2026-fifa-world-cup-233",
+      "question": "Will Jordan win the 2026 FIFA World Cup?",
+      "token_id": "98686749402500678753487703372528277029342097490180026723487433517076969282825",
+      "volume": 4293326.346993,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-the-buffalo-bills-win-super-bowl-2026": {
+      "market_id": "will-the-buffalo-bills-win-super-bowl-2026",
+      "question": "Will the Buffalo Bills win Super Bowl 2026?",
+      "token_id": "19740329944962592380580142050369523795065853055987745520766432334608119837023",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "ethereum-up-or-down-january-12-4pm-et": {
+      "market_id": "ethereum-up-or-down-january-12-4pm-et",
+      "question": "Ethereum Up or Down - January 12, 4PM ET",
+      "token_id": "31335712710747346624556516437882275547227758368099455693012767638982387860372",
+      "volume": 297950.419194,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-trump-nominate-rick-rieder-as-the-next-fed-chair": {
+      "market_id": "will-trump-nominate-rick-rieder-as-the-next-fed-chair",
+      "question": "Will Trump nominate Rick Rieder as the next Fed chair?",
+      "token_id": "16206267440377108972343351482425564384973031696941663558076310969498822538172",
+      "volume": 3177284.077299,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "will-the-charlotte-hornets-win-the-2026-nba-finals": {
+      "market_id": "will-the-charlotte-hornets-win-the-2026-nba-finals",
+      "question": "Will the Charlotte Hornets win the 2026 NBA Finals?",
+      "token_id": "56958503032603479474712760211473691965846495282533669255954105717594026846100",
+      "volume": 10803373.006206,
+      "added_at": "2026-01-12T20:19:06Z"
+    },
+    "nba-phi-tor-2026-01-12": {
+      "market_id": "nba-phi-tor-2026-01-12",
+      "question": "76ers vs. Raptors",
+      "token_id": "84079422967125701737664418544563897723966883354347114914000598940158253784264",
+      "added_at": "2026-01-12T20:35:34Z"
+    },
+    "will-the-chicago-bears-win-super-bowl-2026": {
+      "market_id": "will-the-chicago-bears-win-super-bowl-2026",
+      "question": "Will the Chicago Bears win Super Bowl 2026?",
+      "token_id": "98328612241005079298480588888413183448693837922137555607354456149974993923116",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-the-los-angeles-rams-win-super-bowl-2026": {
+      "market_id": "will-the-los-angeles-rams-win-super-bowl-2026",
+      "question": "Will the Los Angeles Rams win Super Bowl 2026?",
+      "token_id": "67458767289404585234744660199191729864647269546936372565997492523516079162996",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "nba-bos-ind-2026-01-12": {
+      "market_id": "nba-bos-ind-2026-01-12",
+      "question": "Celtics vs. Pacers",
+      "token_id": "105581980424313629798348762713769994455346835651004562258292008104265597988742",
+      "added_at": "2026-01-12T20:35:04Z"
+    },
+    "elon-musk-of-tweets-january-6-january-13-520-539": {
+      "market_id": "elon-musk-of-tweets-january-6-january-13-520-539",
+      "question": "Will Elon Musk post 520-539 tweets from January 6 to January 13, 2026?",
+      "token_id": "2789161844726902174013772179998168626464142596496773372879458268499305714240",
+      "added_at": "2026-01-12T20:19:49Z"
+    },
+    "nba-lal-sac-2026-01-12-total-228pt5": {
+      "market_id": "nba-lal-sac-2026-01-12-total-228pt5",
+      "question": "Lakers vs. Kings: O/U 228.5",
+      "token_id": "69717188653699675566713075544048618914270491829785264071769818311622464442129",
+      "added_at": "2026-01-12T20:35:39Z"
+    },
+    "nhl-nj-min-2026-01-12": {
+      "market_id": "nhl-nj-min-2026-01-12",
+      "question": "Devils vs. Wild",
+      "token_id": "78677415910845619721241408885962159083326721371121705873554634705307642490796",
+      "added_at": "2026-01-12T20:35:04Z"
+    },
+    "nba-lal-sac-2026-01-12": {
+      "market_id": "nba-lal-sac-2026-01-12",
+      "question": "Lakers vs. Kings",
+      "token_id": "81612801338827042387663127519702768796962967157218813690909202393088290743769",
+      "added_at": "2026-01-12T20:35:04Z"
+    },
+    "elon-musk-of-tweets-january-6-january-13-580plus": {
+      "market_id": "elon-musk-of-tweets-january-6-january-13-580plus",
+      "question": "Will Elon Musk post 580+ tweets from January 6 to January 13, 2026?",
+      "token_id": "28727942380951752423609912189702522251849647583509441149490266655643363714397",
+      "added_at": "2026-01-12T20:35:50Z"
+    },
+    "nhl-dal-lak-2026-01-12": {
+      "market_id": "nhl-dal-lak-2026-01-12",
+      "question": "Stars vs. Kings",
+      "token_id": "104058572320830668922725325427206518126160957809876411604621763340225381901303",
+      "added_at": "2026-01-12T20:35:39Z"
+    },
+    "elon-musk-of-tweets-january-6-january-13-560-579": {
+      "market_id": "elon-musk-of-tweets-january-6-january-13-560-579",
+      "question": "Will Elon Musk post 560-579 tweets from January 6 to January 13, 2026?",
+      "token_id": "46603340279235063839571811803122482767899313705046023333535064619104820937729",
+      "added_at": "2026-01-12T20:35:50Z"
+    },
+    "nba-cha-lac-2026-01-12": {
+      "market_id": "nba-cha-lac-2026-01-12",
+      "question": "Hornets vs. Clippers",
+      "token_id": "65493469406418397021759015871676525246207698759515785716823686070948375851111",
+      "added_at": "2026-01-12T20:35:34Z"
+    },
+    "nba-bkn-dal-2026-01-12": {
+      "market_id": "nba-bkn-dal-2026-01-12",
+      "question": "Nets vs. Mavericks",
+      "token_id": "28928201080273179413358770051249779688298574983271144653685925129332980744993",
+      "added_at": "2026-01-12T20:35:34Z"
+    },
+    "will-the-denver-broncos-win-super-bowl-2026": {
+      "market_id": "will-the-denver-broncos-win-super-bowl-2026",
+      "question": "Will the Denver Broncos win Super Bowl 2026?",
+      "token_id": "106557604717602113920600801749904879974434032145488421875350401168244254486067",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-bitcoin-reach-95k-in-january-2026": {
+      "market_id": "will-bitcoin-reach-95k-in-january-2026",
+      "question": "Will Bitcoin reach $95,000 in January?",
+      "token_id": "41404836665749362782624319574687607394745081822202452725583623357802975579587",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-the-new-england-patriots-win-super-bowl-2026": {
+      "market_id": "will-the-new-england-patriots-win-super-bowl-2026",
+      "question": "Will the New England Patriots win Super Bowl 2026?",
+      "token_id": "23108802207086798801173033667711295391410673134835650507670472347957366091390",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "russia-x-ukraine-ceasefire-by-march-31-2026": {
+      "market_id": "russia-x-ukraine-ceasefire-by-march-31-2026",
+      "question": "Russia x Ukraine ceasefire by March 31, 2026?",
+      "token_id": "24394670903706558879845790079760859552309100903651562795058188175118941818512",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-lus-marques-mendes-win-the-2026-portugal-presidential-election": {
+      "market_id": "will-lus-marques-mendes-win-the-2026-portugal-presidential-election",
+      "question": "Will Lu\u00eds Marques Mendes win the 2026 Portugal presidential election?",
+      "token_id": "4370640939548049160201828166293191503482026064792352053936490018661409706941",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "khamenei-out-as-supreme-leader-of-iran-by-june-30-747": {
+      "market_id": "khamenei-out-as-supreme-leader-of-iran-by-june-30-747",
+      "question": "Khamenei out as Supreme Leader of Iran by June 30?",
+      "token_id": "9116770648672617954873502150906669109632013173266181691206825621739241400461",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-the-colorado-avalanche-win-the-2026-nhl-stanley-cup": {
+      "market_id": "will-the-colorado-avalanche-win-the-2026-nhl-stanley-cup",
+      "question": "Will the Colorado Avalanche win the 2026 NHL Stanley Cup?",
+      "token_id": "101738487887518832481587379955535423775326921556438741919099866785354159699479",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "will-the-houston-texans-win-super-bowl-2026": {
+      "market_id": "will-the-houston-texans-win-super-bowl-2026",
+      "question": "Will the Houston Texans win Super Bowl 2026?",
+      "token_id": "113190006934473670021857694313056397492409382226046178751957476405444749578984",
+      "added_at": "2026-01-12T20:36:20Z"
+    },
+    "bitcoin-up-or-down-january-12-11pm-et": {
+      "market_id": "bitcoin-up-or-down-january-12-11pm-et",
+      "question": "Bitcoin Up or Down - January 12, 11PM ET",
+      "token_id": "104001656444403274066061215796641037126267609674996914105931443299397152219858",
+      "added_at": "2026-01-12T20:35:39Z"
+    }
+  },
+  "market_volume_history": {}
+}
