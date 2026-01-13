@@ -1111,7 +1111,7 @@ class AutoTradingBot:
     def _cleanup_stagnant_positions(self, min_positions_to_free: int = 5) -> int:
         """
         Sell stagnant positions (near $0 P&L) to free up slots and cash.
-        More aggressive cleanup when at capacity.
+        VERY aggressive cleanup when at capacity.
         Returns number of positions closed.
         """
         closed_count = 0
@@ -1119,7 +1119,8 @@ class AutoTradingBot:
         
         # Check how full we are
         positions_used = len(self.open_trades)
-        at_capacity = positions_used >= self.config.max_positions - 2
+        at_capacity = positions_used >= self.config.max_positions - 5
+        very_full = positions_used >= self.config.max_positions - 2
         
         # Find stagnant positions - sorted by how "stuck" they are
         stagnant_candidates = []
@@ -1132,24 +1133,29 @@ class AutoTradingBot:
             except:
                 hours_held = 24  # Assume 24 hours if can't parse
             
-            # MORE AGGRESSIVE criteria when at capacity
-            if at_capacity:
+            # VERY AGGRESSIVE when very full
+            if very_full:
+                # Sell almost anything - flat or small loss held > 15 min
+                is_flat = -0.12 <= trade.pnl_pct <= 0.12
+                held_long_enough = hours_held >= 0.25  # 15 minutes
+                is_slight_loss = -0.20 <= trade.pnl_pct < -0.12 and hours_held >= 0.5
+            elif at_capacity:
                 # At capacity: sell anything flat held > 30 min
-                is_flat = -0.08 <= trade.pnl_pct <= 0.08
+                is_flat = -0.10 <= trade.pnl_pct <= 0.10
                 held_long_enough = hours_held >= 0.5  # 30 minutes
-                is_slight_loss = -0.20 <= trade.pnl_pct < -0.08 and hours_held >= 1
+                is_slight_loss = -0.18 <= trade.pnl_pct < -0.10 and hours_held >= 1
             else:
-                # Normal: sell flat positions held > 2 hours
-                is_flat = -0.05 <= trade.pnl_pct <= 0.05
-                held_long_enough = hours_held >= 2
-                is_slight_loss = -0.15 <= trade.pnl_pct < -0.05 and hours_held >= 6
+                # Normal: sell flat positions held > 1 hour
+                is_flat = -0.06 <= trade.pnl_pct <= 0.06
+                held_long_enough = hours_held >= 1
+                is_slight_loss = -0.15 <= trade.pnl_pct < -0.06 and hours_held >= 3
             
             if (is_flat and held_long_enough) or is_slight_loss:
                 # Score: prefer to close positions that are most flat and oldest
                 flatness_score = 1 - abs(trade.pnl_pct)  # Flatter = higher score
-                age_score = min(hours_held / 24, 1.0)  # Older = higher score
+                age_score = min(hours_held / 12, 1.0)  # Older = higher score (faster scale)
                 # Add small loss penalty - prefer selling break-even over losses
-                loss_penalty = 0.1 if trade.pnl_pct < 0 else 0
+                loss_penalty = 0.05 if trade.pnl_pct < 0 else 0
                 total_score = flatness_score * 0.5 + age_score * 0.4 - loss_penalty
                 
                 stagnant_candidates.append((trade_id, trade, total_score, hours_held))
@@ -1158,7 +1164,7 @@ class AutoTradingBot:
         stagnant_candidates.sort(key=lambda x: x[2], reverse=True)
         
         # How many to close - more aggressive when at capacity
-        to_close = min_positions_to_free if not at_capacity else max(min_positions_to_free, 8)
+        to_close = min_positions_to_free if not at_capacity else max(min_positions_to_free, 12)
         
         # Close positions
         for trade_id, trade, score, hours_held in stagnant_candidates[:to_close]:
@@ -1192,8 +1198,8 @@ class AutoTradingBot:
         
         closed = 0
         for trade_id, trade in sorted_trades[:count]:
-            # Only force sell if not too much of a loss (avoid locking in huge losses)
-            if trade.pnl_pct > -0.25:  # Don't sell if down more than 25%
+            # Force sell anything not down more than 30%
+            if trade.pnl_pct > -0.30:
                 pnl_str = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
                 self._log(
                     f"⚡ Force selling: '{trade.question[:25]}...' | {pnl_str} ({trade.pnl_pct:+.1%})",
@@ -1275,7 +1281,6 @@ class AutoTradingBot:
                 for _ in range(self.config.scan_interval_seconds):
                     if not self._running:
                         break
-                    time.sleep(1)
                     time.sleep(1)
                     
             except Exception as e:

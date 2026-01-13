@@ -130,33 +130,17 @@ class InsiderAlert:
 class InsiderDetectorConfig:
     """Configuration for the insider detector.
     
-    Optimized for detecting insider trading in SMALL markets,
-    where insiders are more likely to operate.
+    SIMPLIFIED: Just detect large trades over $10,000 in any market.
     """
-    # Thresholds for alerts - LOWER for small markets
-    large_trade_threshold: float = 500.0  # $500 for normal markets (lowered)
-    small_market_threshold: float = 100.0  # $100 for very small markets (lowered)
-    new_account_days: float = 14.0  # Account age threshold (2 weeks)
-    low_activity_trades: int = 3  # Trade count threshold (stricter)
-    
-    # Small market detection - Expanded ranges
-    small_market_volume_max: float = 100000.0  # Markets under $100k volume are "small"
-    tiny_market_volume_max: float = 25000.0  # Markets under $25k are "tiny"
+    # Simple threshold - alert on any trade over this amount
+    large_trade_threshold: float = 10000.0  # $10,000 threshold
     
     # Monitoring settings
-    poll_interval_seconds: int = 20  # Faster polling (20 sec)
-    max_alerts_stored: int = 1000  # Store more alerts
+    poll_interval_seconds: int = 10  # Fast polling (10 sec)
+    max_alerts_stored: int = 200  # Don't store too many
     
     # What to monitor
-    monitor_new_accounts: bool = True
     monitor_large_trades: bool = True
-    monitor_sudden_volume: bool = True
-    monitor_small_markets: bool = True  # Focus on small markets
-    volume_spike_multiplier: float = 2.5  # 2.5x normal volume (more sensitive)
-    
-    # Relative thresholds for small markets - More sensitive
-    small_market_trade_pct: float = 0.02  # Alert if trade is >2% of market volume (lowered from 5%)
-    price_impact_threshold: float = 0.02  # Alert if trade moves price >2%
 
 
 class InsiderDetector:
@@ -239,108 +223,38 @@ class InsiderDetector:
         market_volume: Optional[float] = None,  # Total market volume
     ) -> Optional[InsiderAlert]:
         """
-        Analyze a trade for suspicious activity.
-        Optimized for detecting insider trading in SMALL markets.
-        
-        Returns an InsiderAlert if suspicious, None otherwise.
+        SIMPLIFIED: Just alert on any trade over $10,000.
+        Returns an InsiderAlert if trade is large, None otherwise.
         """
-        alerts_generated = []
+        # Simple check: is this trade over our threshold?
+        if trade_size < self.config.large_trade_threshold:
+            return None
         
-        # Get or create trader profile
-        if trader_address not in self.trader_profiles:
-            self.trader_profiles[trader_address] = TraderProfile(
-                address=trader_address,
-                first_seen=trader_first_seen or self._now_iso(),
-                total_trades=trader_trade_count or 0,
-            )
+        # Determine severity based on size
+        if trade_size >= 100000:
+            severity = AlertSeverity.CRITICAL
+        elif trade_size >= 50000:
+            severity = AlertSeverity.HIGH
+        elif trade_size >= 25000:
+            severity = AlertSeverity.MEDIUM
+        else:
+            severity = AlertSeverity.LOW
         
-        profile = self.trader_profiles[trader_address]
-        profile.total_trades += 1
-        profile.total_volume += trade_size
-        profile.markets_traded.add(market_id)
-        if trade_size >= 500:
-            profile.large_trades += 1
+        # Create simple alert
+        alert = self._create_alert(
+            severity=severity,
+            market_id=market_id,
+            market_question=market_question,
+            trader_address=trader_address,
+            trade_size=trade_size,
+            trade_side=trade_side,
+            outcome=outcome,
+            price=price,
+            reason=f"Large trade: ${trade_size:,.0f} {trade_side.upper()}",
+            trader_profile=None,
+        )
         
-        # Determine if this is a small market (where insiders operate)
-        is_small_market = market_volume is not None and market_volume < self.config.small_market_volume_max
-        is_tiny_market = market_volume is not None and market_volume < self.config.tiny_market_volume_max
-        
-        # Adjust thresholds for small markets
-        effective_threshold = self.config.large_trade_threshold
-        if is_tiny_market:
-            effective_threshold = self.config.small_market_threshold
-        elif is_small_market:
-            effective_threshold = self.config.large_trade_threshold * 0.5
-        
-        # Check trade as percentage of market volume (key for small markets!)
-        if market_volume and market_volume > 0 and self.config.monitor_small_markets:
-            trade_pct = trade_size / market_volume
-            if trade_pct >= self.config.small_market_trade_pct:
-                severity = AlertSeverity.HIGH if trade_pct > 0.10 else AlertSeverity.MEDIUM
-                alert = self._create_alert(
-                    severity=severity,
-                    market_id=market_id,
-                    market_question=market_question,
-                    trader_address=trader_address,
-                    trade_size=trade_size,
-                    trade_side=trade_side,
-                    outcome=outcome,
-                    price=price,
-                    reason=f"Large trade relative to market: ${trade_size:,.0f} = {trade_pct:.1%} of ${market_volume:,.0f} volume",
-                    trader_profile=profile,
-                )
-                alerts_generated.append(alert)
-        
-        # Check for large trade from new/low-activity account
-        if trade_size >= effective_threshold:
-            is_new = profile.is_new_account(self.config.new_account_days)
-            is_low_activity = profile.is_low_activity(self.config.low_activity_trades)
-            
-            if is_new and self.config.monitor_new_accounts:
-                # Higher severity for small markets
-                if is_tiny_market:
-                    severity = AlertSeverity.CRITICAL
-                elif is_small_market:
-                    severity = AlertSeverity.HIGH
-                elif trade_size >= 50000:
-                    severity = AlertSeverity.CRITICAL
-                else:
-                    severity = AlertSeverity.HIGH
-                    
-                market_size_note = " (SMALL MARKET)" if is_small_market else ""
-                alert = self._create_alert(
-                    severity=severity,
-                    market_id=market_id,
-                    market_question=market_question,
-                    trader_address=trader_address,
-                    trade_size=trade_size,
-                    trade_side=trade_side,
-                    outcome=outcome,
-                    price=price,
-                    reason=f"New account ({profile.days_active():.1f} days) placed ${trade_size:,.0f} trade{market_size_note}",
-                    trader_profile=profile,
-                )
-                alerts_generated.append(alert)
-            
-            elif is_low_activity and self.config.monitor_large_trades:
-                severity = AlertSeverity.HIGH if (is_small_market or trade_size >= 25000) else AlertSeverity.MEDIUM
-                alert = self._create_alert(
-                    severity=severity,
-                    market_id=market_id,
-                    market_question=market_question,
-                    trader_address=trader_address,
-                    trade_size=trade_size,
-                    trade_side=trade_side,
-                    outcome=outcome,
-                    price=price,
-                    reason=f"Low-activity account ({profile.total_trades} trades) placed ${trade_size:,.0f} trade",
-                    trader_profile=profile,
-                )
-                alerts_generated.append(alert)
-        
-        self._save()
-        
-        return alerts_generated[0] if alerts_generated else None
+        return alert
     
     def check_volume_spike(
         self,
@@ -524,15 +438,17 @@ class InsiderDetector:
     
     def _monitor_loop(self) -> None:
         """Background loop to fetch and analyze trades."""
+        print(f"[InsiderDetector] Starting monitoring loop...")
         while self._running:
             try:
                 # First, auto-fetch active markets if we don't have enough
                 self._auto_fetch_markets()
+                print(f"[InsiderDetector] Monitoring {len(self.monitored_markets)} markets")
                 
                 # Then scan for suspicious activity
                 self._scan_all_markets()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[InsiderDetector] Error in monitor loop: {e}")
             
             # Wait for next poll
             for _ in range(self.config.poll_interval_seconds):
@@ -651,37 +567,29 @@ class InsiderDetector:
             pass
     
     def _scan_all_markets(self) -> None:
-        """Scan all monitored markets for suspicious trades - show ALL trades in small markets."""
+        """SIMPLIFIED: Scan markets for trades over $10,000."""
+        trades_analyzed = 0
+        large_trades_found = 0
+        
         for market_id, market_info in list(self.monitored_markets.items()):
             try:
                 token_id = market_info.get("token_id")
                 question = market_info.get("question", "Unknown")
-                market_volume = float(market_info.get("volume", 0))
                 
                 if not token_id:
                     continue
                 
-                # Determine if this is a small market
-                is_small_market = market_volume > 0 and market_volume < self.config.small_market_volume_max
-                is_tiny_market = market_volume > 0 and market_volume < self.config.tiny_market_volume_max
-                
                 # Fetch recent trades
-                trades = fetch_recent_trades(token_id, limit=100)
+                trades = fetch_recent_trades(token_id, limit=50)
                 
                 for trade in trades:
                     trade_size = float(trade.get("size", 0)) * float(trade.get("price", 0))
                     trade_price = float(trade.get("price", 0))
+                    trades_analyzed += 1
                     
-                    # For small markets: analyze ALL trades above a minimal threshold ($100)
-                    # For regular markets: use the normal threshold
-                    if is_tiny_market:
-                        min_trade_size = 100.0  # Show trades $100+ in tiny markets
-                    elif is_small_market:
-                        min_trade_size = 250.0  # Show trades $250+ in small markets
-                    else:
-                        min_trade_size = self.config.large_trade_threshold
-                    
-                    if trade_size >= min_trade_size:
+                    # Simple: only alert on trades >= $10,000
+                    if trade_size >= self.config.large_trade_threshold:
+                        large_trades_found += 1
                         self.analyze_trade(
                             market_id=market_id,
                             market_question=question,
@@ -690,11 +598,13 @@ class InsiderDetector:
                             trade_side=trade.get("side", "buy"),
                             outcome=trade.get("outcome", "Yes"),
                             price=trade_price,
-                            market_volume=market_volume,
                         )
                         
             except Exception:
                 continue
+        
+        if large_trades_found > 0:
+            print(f"[InsiderDetector] Found {large_trades_found} large trades (>$10k) from {trades_analyzed} analyzed")
 
 
 def fetch_recent_trades(token_id: str, limit: int = 100) -> List[Dict]:

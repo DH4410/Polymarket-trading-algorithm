@@ -38,6 +38,7 @@ from polymarket_api import (
     compute_resolution_days,
 )
 from runtime_state import parse_volume, extract_parent_event, _now_iso
+from log_manager import LogManager, get_log_manager
 
 # Try to import news analyzer
 try:
@@ -134,12 +135,30 @@ class SmoothScrollText(tk.Frame):
         self.text.tag_configure("success", foreground=Theme.ACCENT_GREEN)
         self.text.tag_configure("info", foreground=Theme.TEXT_SECONDARY)
         self.text.tag_configure("title", foreground=Theme.TEXT_PRIMARY, font=("Consolas", 10, "bold"))
+        
+        # Store messages for export
+        self.message_log: List[Dict] = []
+        self.max_messages = 200  # Keep max 200 messages in memory
     
     def add_message(self, message: str, msg_type: str = "info", title: str = "") -> None:
         """Add a message to the feed."""
         self.text.configure(state=tk.NORMAL)
         
         timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Store for potential export
+        self.message_log.append({
+            'timestamp': datetime.now().isoformat(),
+            'type': msg_type,
+            'title': title,
+            'message': message,
+        })
+        
+        # Memory management: keep only last N messages
+        if len(self.message_log) > self.max_messages:
+            self.message_log = self.message_log[-self.max_messages:]
+            # Also trim the text widget to avoid memory bloat
+            self._trim_old_messages()
         
         # Add timestamp
         self.text.insert(tk.END, f"[{timestamp}] ", "timestamp")
@@ -152,7 +171,27 @@ class SmoothScrollText(tk.Frame):
         self.text.insert(tk.END, f"{message}\n", msg_type)
         
         self.text.configure(state=tk.DISABLED)
+        
+        # Force scroll to bottom after a short delay to ensure rendering
+        self.after(10, self._scroll_to_bottom)
+    
+    def _trim_old_messages(self) -> None:
+        """Remove oldest messages from text widget to save memory."""
+        # Count lines and remove oldest 50 if over 300
+        line_count = int(self.text.index('end-1c').split('.')[0])
+        if line_count > 300:
+            self.text.delete('1.0', f'{line_count - 200}.0')
+    
+    def get_messages_for_export(self) -> List[Dict]:
+        """Get messages and clear log."""
+        messages = self.message_log.copy()
+        self.message_log = []
+        return messages
+    
+    def _scroll_to_bottom(self) -> None:
+        """Scroll to the bottom of the text widget."""
         self.text.see(tk.END)
+        self.text.yview_moveto(1.0)
     
     def clear(self) -> None:
         """Clear all messages."""
@@ -206,7 +245,7 @@ class StatDisplay(tk.Frame):
 
 
 class PositionRow(tk.Frame):
-    """A row displaying a trading position."""
+    """A compact position card for grid layout."""
     
     def __init__(
         self,
@@ -222,75 +261,81 @@ class PositionRow(tk.Frame):
         self.on_sell = on_sell
         self.on_click = on_click
         
-        self.configure(padx=10, pady=8)
+        self.configure(padx=6, pady=4)
         self.bind("<Enter>", lambda e: self.configure(bg=Theme.BG_HOVER))
         self.bind("<Leave>", lambda e: self.configure(bg=Theme.BG_CARD))
         if on_click:
             self.bind("<Button-1>", lambda e: on_click(trade))
         
-        # Left side - market info
-        left = tk.Frame(self, bg=Theme.BG_CARD)
-        left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        # Question
-        q_text = trade.question[:35] + "..." if len(trade.question) > 35 else trade.question
+        # Compact vertical layout
+        # Row 1: Question (truncated)
+        q_text = trade.question[:30] + "..." if len(trade.question) > 30 else trade.question
         tk.Label(
-            left,
+            self,
             text=q_text,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 8),
             bg=Theme.BG_CARD,
             fg=Theme.TEXT_PRIMARY,
             anchor="w",
-        ).pack(fill=tk.X)
+        ).pack(fill=tk.X, anchor="w")
         
-        # Details
-        details = tk.Frame(left, bg=Theme.BG_CARD)
-        details.pack(fill=tk.X)
+        # Row 2: Entry price and current value
+        details_row = tk.Frame(self, bg=Theme.BG_CARD)
+        details_row.pack(fill=tk.X)
         
         tk.Label(
-            details,
-            text=f"{trade.shares:.1f} @ ${trade.entry_price:.3f}",
-            font=("Segoe UI", 9),
+            details_row,
+            text=f"${trade.cost_basis:.0f}@{trade.entry_price:.2f}",
+            font=("Segoe UI", 7),
             bg=Theme.BG_CARD,
             fg=Theme.TEXT_SECONDARY,
         ).pack(side=tk.LEFT)
         
-        # Right side - P&L
-        right = tk.Frame(self, bg=Theme.BG_CARD)
-        right.pack(side=tk.RIGHT)
+        # Current price
+        tk.Label(
+            details_row,
+            text=f"→${trade.current_price:.2f}",
+            font=("Segoe UI", 7),
+            bg=Theme.BG_CARD,
+            fg=Theme.TEXT_MUTED,
+        ).pack(side=tk.LEFT, padx=(4, 0))
+        
+        # Row 3: P&L in dollars and percentage
+        pnl_row = tk.Frame(self, bg=Theme.BG_CARD)
+        pnl_row.pack(fill=tk.X)
         
         pnl_color = Theme.PROFIT if trade.pnl >= 0 else Theme.LOSS
-        pnl_text = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
+        pnl_dollar = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
         
         tk.Label(
-            right,
-            text=pnl_text,
-            font=("Segoe UI", 11, "bold"),
+            pnl_row,
+            text=pnl_dollar,
+            font=("Segoe UI", 9, "bold"),
             bg=Theme.BG_CARD,
             fg=pnl_color,
-        ).pack(anchor="e")
+        ).pack(side=tk.LEFT)
         
         tk.Label(
-            right,
-            text=f"{trade.pnl_pct:+.1%}",
-            font=("Segoe UI", 9),
+            pnl_row,
+            text=f"({trade.pnl_pct:+.1f}%)",
+            font=("Segoe UI", 8),
             bg=Theme.BG_CARD,
             fg=pnl_color,
-        ).pack(anchor="e")
+        ).pack(side=tk.LEFT, padx=(4, 0))
         
-        # Sell button
+        # Row 4: Sell button (small)
         if on_sell and trade.status == "open":
             sell_btn = tk.Label(
-                right,
+                self,
                 text="SELL",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 6, "bold"),
                 bg=Theme.ACCENT_RED,
                 fg=Theme.TEXT_PRIMARY,
-                padx=8,
-                pady=2,
+                padx=4,
+                pady=1,
                 cursor="hand2",
             )
-            sell_btn.pack(anchor="e", pady=(4, 0))
+            sell_btn.pack(anchor="e", pady=(2, 0))
             sell_btn.bind("<Button-1>", lambda e: on_sell(trade))
 
 
@@ -447,22 +492,19 @@ class TradingBotApp(tk.Tk):
             on_message=self._on_bot_message,
         )
         
-        # Initialize insider detector (monitors ALL scanned markets)
-        # Lower thresholds to catch more trades in smaller markets
+        # Initialize insider detector - SIMPLE: just trades over $10k
         self.insider_detector = InsiderDetector(
             config=InsiderDetectorConfig(
-                large_trade_threshold=500.0,  # Show trades $500+ in normal markets
-                small_market_threshold=100.0,  # Show trades $100+ in small markets
-                small_market_volume_max=100000.0,  # Markets under $100k are "small"
-                tiny_market_volume_max=25000.0,  # Markets under $25k are "tiny"
-                monitor_small_markets=True,
-                poll_interval_seconds=15,  # Fast polling
-                small_market_trade_pct=0.01,  # 1% of market volume triggers alert
-                max_alerts_stored=1000,  # Keep more alerts
+                large_trade_threshold=10000.0,  # Alert on trades $10,000+
+                poll_interval_seconds=10,  # Fast polling
+                max_alerts_stored=200,
             ),
             storage_path=INSIDER_PATH,
         )
         self.insider_detector.add_listener(self._on_insider_alert)
+        
+        # Initialize log manager for memory cleanup
+        self.log_manager = get_log_manager()
         
         # Tracked markets
         self.tracked_markets: Dict[str, Dict] = {}
@@ -492,6 +534,13 @@ class TradingBotApp(tk.Tk):
         self.chat.add_message(
             "Enable 'Auto Trade' to let me automatically find and execute profitable trades. "
             "Bot now supports SWING trades on popular markets for quick profits!",
+            "info"
+        )
+        
+        # Start insider detector monitoring (always active to catch alerts)
+        self.insider_detector.start_monitoring()
+        self.chat.add_message(
+            "Insider trading detector is now monitoring markets for suspicious activity.",
             "info"
         )
         
@@ -980,14 +1029,38 @@ class TradingBotApp(tk.Tk):
             fg=Theme.TEXT_PRIMARY,
         ).pack(side=tk.LEFT)
         
+        # Sort options
+        sort_frame = tk.Frame(header, bg=Theme.BG_PRIMARY)
+        sort_frame.pack(side=tk.RIGHT)
+        
+        tk.Label(
+            sort_frame,
+            text="Sort:",
+            font=("Segoe UI", 9),
+            bg=Theme.BG_PRIMARY,
+            fg=Theme.TEXT_SECONDARY,
+        ).pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.position_sort_var = tk.StringVar(value="profit")
+        sort_options = ["profit", "recent", "loss", "size"]
+        self.position_sort_menu = ttk.Combobox(
+            sort_frame,
+            textvariable=self.position_sort_var,
+            values=sort_options,
+            width=8,
+            state="readonly",
+        )
+        self.position_sort_menu.pack(side=tk.LEFT, padx=(0, 10))
+        self.position_sort_menu.bind("<<ComboboxSelected>>", lambda e: self._update_positions_display())
+        
         self.positions_count = tk.Label(
-            header,
+            sort_frame,
             text="0 positions",
             font=("Segoe UI", 10),
             bg=Theme.BG_PRIMARY,
             fg=Theme.TEXT_SECONDARY,
         )
-        self.positions_count.pack(side=tk.RIGHT)
+        self.positions_count.pack(side=tk.LEFT)
         
         # Positions list
         self.positions_container = tk.Frame(parent, bg=Theme.BG_PRIMARY)
@@ -1001,12 +1074,23 @@ class TradingBotApp(tk.Tk):
         scrollbar = ttk.Scrollbar(self.positions_container, command=self.positions_canvas.yview)
         self.positions_frame = tk.Frame(self.positions_canvas, bg=Theme.BG_PRIMARY)
         
-        self.positions_canvas.create_window((0, 0), window=self.positions_frame, anchor="nw")
+        self.positions_window = self.positions_canvas.create_window((0, 0), window=self.positions_frame, anchor="nw")
         self.positions_canvas.configure(yscrollcommand=scrollbar.set)
         
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.positions_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
+        # Bind to expand frame width to canvas width
+        def on_canvas_configure(event):
+            self.positions_canvas.itemconfig(self.positions_window, width=event.width)
+        
+        # Mouse wheel scrolling (bind to canvas and frame)
+        def on_mousewheel(event):
+            self.positions_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+        self.positions_canvas.bind("<Configure>", on_canvas_configure)
+        self.positions_canvas.bind("<MouseWheel>", on_mousewheel)
+        self.positions_frame.bind("<MouseWheel>", on_mousewheel)
         self.positions_frame.bind("<Configure>",
             lambda e: self.positions_canvas.configure(scrollregion=self.positions_canvas.bbox("all")))
     
@@ -1392,46 +1476,53 @@ class TradingBotApp(tk.Tk):
             row.pack(fill=tk.X, pady=2)
     
     def _update_positions_display(self) -> None:
-        """Update the positions list with optimized rendering."""
+        """Update the positions list with 2-column grid layout."""
         trades = self.bot.get_open_trades()
         
-        # Check if position count changed - only rebuild if needed
+        # Sort trades based on selected option
+        sort_by = self.position_sort_var.get() if hasattr(self, 'position_sort_var') else "profit"
+        if sort_by == "profit":
+            trades = sorted(trades, key=lambda t: t.pnl, reverse=True)  # Highest profit first
+        elif sort_by == "loss":
+            trades = sorted(trades, key=lambda t: t.pnl)  # Biggest loss first
+        elif sort_by == "recent":
+            trades = sorted(trades, key=lambda t: t.timestamp, reverse=True)  # Newest first
+        elif sort_by == "size":
+            trades = sorted(trades, key=lambda t: t.cost_basis, reverse=True)  # Largest position first
+        
         current_count = len(trades)
-        current_ids = set(t.id for t in trades)
-        
-        # Store state for comparison
-        if not hasattr(self, '_last_position_ids'):
-            self._last_position_ids = set()
-        
-        # Only rebuild widgets if positions changed
-        needs_rebuild = (current_ids != self._last_position_ids)
-        
         self.positions_count.configure(text=f"{current_count} positions")
         
-        if needs_rebuild:
-            self._last_position_ids = current_ids
+        # Always rebuild to show updated P&L values
+        for widget in self.positions_frame.winfo_children():
+            widget.destroy()
+        
+        if not trades:
+            tk.Label(
+                self.positions_frame,
+                text="No open positions.\nThe bot will show positions here when it trades.",
+                font=("Segoe UI", 10),
+                bg=Theme.BG_PRIMARY,
+                fg=Theme.TEXT_MUTED,
+                pady=30,
+            ).pack()
+            return
+        
+        # Configure positions_frame for 2-column grid
+        self.positions_frame.grid_columnconfigure(0, weight=1)
+        self.positions_frame.grid_columnconfigure(1, weight=1)
+        
+        # Place positions in 2-column grid
+        for i, trade in enumerate(trades):
+            row_idx = i // 2
+            col_idx = i % 2
             
-            for widget in self.positions_frame.winfo_children():
-                widget.destroy()
-            
-            if not trades:
-                tk.Label(
-                    self.positions_frame,
-                    text="No open positions.\nThe bot will show positions here when it trades.",
-                    font=("Segoe UI", 10),
-                    bg=Theme.BG_PRIMARY,
-                    fg=Theme.TEXT_MUTED,
-                    pady=30,
-                ).pack()
-                return
-            
-            for trade in trades:
-                row = PositionRow(
-                    self.positions_frame,
-                    trade,
-                    on_sell=self._sell_position,
-                )
-                row.pack(fill=tk.X, pady=2)
+            position_card = PositionRow(
+                self.positions_frame,
+                trade,
+                on_sell=self._sell_position,
+            )
+            position_card.grid(row=row_idx, column=col_idx, sticky="nsew", padx=2, pady=2)
     
     def _update_stats(self) -> None:
         """Update portfolio statistics."""
@@ -1481,16 +1572,15 @@ class TradingBotApp(tk.Tk):
         if not alerts:
             tk.Label(
                 self.alerts_frame,
-                text="Monitoring ALL markets for insider activity...\n\n"
-                     "The bot watches for:\n"
-                     "• Trades >$100 in tiny markets (<$25k volume)\n"
-                     "• Trades >$250 in small markets (<$100k volume)\n"
-                     "• Trades >$500 in normal markets\n"
-                     "• Trades >1% of total market volume\n"
-                     "• New accounts (<14 days) placing bets\n"
-                     "• Unusual volume spikes (2.5x normal)\n\n"
-                     "MAJOR alerts ($100k+) will appear in Bot Activity.\n\n"
-                     f"Currently monitoring: {len(self.insider_detector.monitored_markets)} markets",
+                text="Monitoring ALL markets for large trades...\n\n"
+                     "Alerting on trades over $10,000\n\n"
+                     "Severity levels:\n"
+                     "• LOW: $10k - $25k trades\n"
+                     "• MEDIUM: $25k - $50k trades\n"
+                     "• HIGH: $50k - $100k trades\n"
+                     "• CRITICAL: $100k+ trades\n\n"
+                     f"Currently monitoring: {len(self.insider_detector.monitored_markets)} markets\n"
+                     f"Scanning every 10 seconds",
                 font=("Segoe UI", 10),
                 bg=Theme.BG_PRIMARY,
                 fg=Theme.TEXT_MUTED,
@@ -1577,7 +1667,7 @@ class TradingBotApp(tk.Tk):
         """Update the trade log panel with recent trades."""
         trade_log = self.bot.get_trade_log(limit=30)
         
-        self.trade_log_count.configure(text=f"{len(trade_log)} recent trades")
+        self.trade_log_count.configure(text=f"{len(trade_log)} recent | {len(self.bot.trade_log)} total")
         
         self.trade_log_text.configure(state=tk.NORMAL)
         self.trade_log_text.delete(1.0, tk.END)
@@ -1591,6 +1681,7 @@ class TradingBotApp(tk.Tk):
             self.trade_log_text.configure(state=tk.DISABLED)
             return
         
+        # trade_log is already newest-first from get_trade_log
         for entry in trade_log:
             # Parse timestamp
             try:
@@ -1630,7 +1721,9 @@ class TradingBotApp(tk.Tk):
                 self.trade_log_text.insert(tk.END, f"         {q_text}\n", "timestamp")
         
         self.trade_log_text.configure(state=tk.DISABLED)
-        self.trade_log_text.see(tk.END)
+        # Force scroll to TOP to show newest trades first
+        self.trade_log_text.see("1.0")
+        self.trade_log_text.yview_moveto(0.0)
     
     def _show_settings(self) -> None:
         """Show settings dialog."""
@@ -1692,32 +1785,51 @@ class TradingBotApp(tk.Tk):
     def _start_updates(self) -> None:
         """Start periodic UI updates - faster refresh for real-time feel."""
         self._update_counter = 0
+        self._log_check_counter = 0
         
         def update():
             self._update_counter += 1
+            self._log_check_counter += 1
             
             # ALWAYS update positions to get fresh prices (even when bot not running)
             # This ensures P&L is always calculated with current market prices
             try:
                 self.bot.update_positions()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[Update] Position update error: {e}")
             
             # Update stats every tick (2 seconds) - lightweight operation
-            self._update_stats()
+            try:
+                self._update_stats()
+            except Exception as e:
+                print(f"[Update] Stats error: {e}")
             
             # Update positions every 2 ticks (4 seconds) - heavier operation
             if self._update_counter % 2 == 0:
-                self._update_positions_display()
-                self._update_stats_dashboard()
+                try:
+                    self._update_positions_display()
+                    self._update_stats_dashboard()
+                except Exception as e:
+                    print(f"[Update] Positions display error: {e}")
             
             # Update trade log every 3 ticks (6 seconds)
             if self._update_counter % 3 == 0:
-                self._update_trade_log_display()
+                try:
+                    self._update_trade_log_display()
+                except Exception as e:
+                    print(f"[Update] Trade log error: {e}")
             
             # Update alerts every 4 ticks (8 seconds)
             if self._update_counter % 4 == 0:
-                self._update_alerts_display()
+                try:
+                    self._update_alerts_display()
+                except Exception as e:
+                    print(f"[Update] Alerts error: {e}")
+            
+            # Check for log export every 30 minutes (900 ticks at 2s each)
+            if self._log_check_counter >= 900:
+                self._log_check_counter = 0
+                self._perform_log_cleanup()
             
             # Refresh: 2 seconds
             self.after(2000, update)
@@ -1726,6 +1838,45 @@ class TradingBotApp(tk.Tk):
         self._update_trade_log_display()
         self._update_stats_dashboard()
         self.after(2000, update)
+    
+    def _perform_log_cleanup(self) -> None:
+        """Export logs to CSV and clear memory to prevent slowdown."""
+        try:
+            # Get current logs from chat widget
+            bot_activity = self.chat.get_messages_for_export() if hasattr(self.chat, 'get_messages_for_export') else []
+            trade_log = self.bot.trade_log.copy() if hasattr(self.bot, 'trade_log') else []
+            insider_alerts = list(self.insider_detector.alerts) if hasattr(self.insider_detector, 'alerts') else []
+            
+            # Export if we have data
+            if trade_log or bot_activity or insider_alerts:
+                exports = self.log_manager.perform_export_cycle(
+                    bot_activity=bot_activity,
+                    trade_log=trade_log,
+                    insider_alerts=[{
+                        'timestamp': a.timestamp,
+                        'market_question': a.market_question,
+                        'trade_size': a.trade_size,
+                        'trade_side': a.trade_side,
+                        'outcome': a.outcome,
+                        'price': a.price,
+                        'severity': a.severity.value,
+                        'reason': a.reason,
+                    } for a in insider_alerts]
+                )
+                
+                # DON'T clear trade log - keep all trades visible
+                # Only trim insider alerts which can grow large
+                self.insider_detector.alerts = self.insider_detector.alerts[-100:]
+                
+                # Log the cleanup
+                exported_count = sum(1 for v in exports.values() if v)
+                if exported_count > 0:
+                    self.chat.add_message(
+                        f"Exported logs to CSV ({exported_count} files). Memory cleaned.",
+                        "info"
+                    )
+        except Exception as e:
+            print(f"[LogManager] Export error: {e}")
     
     def _load_markets(self) -> None:
         """Load saved markets."""
