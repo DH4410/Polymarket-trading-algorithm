@@ -134,29 +134,29 @@ class InsiderDetectorConfig:
     where insiders are more likely to operate.
     """
     # Thresholds for alerts - LOWER for small markets
-    large_trade_threshold: float = 1000.0  # $1,000 (lower for small markets)
-    small_market_threshold: float = 500.0  # $500 for very small markets
+    large_trade_threshold: float = 500.0  # $500 for normal markets (lowered)
+    small_market_threshold: float = 100.0  # $100 for very small markets (lowered)
     new_account_days: float = 14.0  # Account age threshold (2 weeks)
     low_activity_trades: int = 3  # Trade count threshold (stricter)
     
-    # Small market detection
-    small_market_volume_max: float = 50000.0  # Markets under $50k volume are "small"
-    tiny_market_volume_max: float = 10000.0  # Markets under $10k are "tiny"
+    # Small market detection - Expanded ranges
+    small_market_volume_max: float = 100000.0  # Markets under $100k volume are "small"
+    tiny_market_volume_max: float = 25000.0  # Markets under $25k are "tiny"
     
     # Monitoring settings
-    poll_interval_seconds: int = 30
-    max_alerts_stored: int = 500
+    poll_interval_seconds: int = 20  # Faster polling (20 sec)
+    max_alerts_stored: int = 1000  # Store more alerts
     
     # What to monitor
     monitor_new_accounts: bool = True
     monitor_large_trades: bool = True
     monitor_sudden_volume: bool = True
     monitor_small_markets: bool = True  # Focus on small markets
-    volume_spike_multiplier: float = 3.0  # 3x normal volume (more sensitive)
+    volume_spike_multiplier: float = 2.5  # 2.5x normal volume (more sensitive)
     
-    # Relative thresholds for small markets
-    small_market_trade_pct: float = 0.05  # Alert if trade is >5% of market volume
-    price_impact_threshold: float = 0.03  # Alert if trade moves price >3%
+    # Relative thresholds for small markets - More sensitive
+    small_market_trade_pct: float = 0.02  # Alert if trade is >2% of market volume (lowered from 5%)
+    price_impact_threshold: float = 0.02  # Alert if trade moves price >2%
 
 
 class InsiderDetector:
@@ -541,14 +541,24 @@ class InsiderDetector:
                 time.sleep(1)
     
     def _auto_fetch_markets(self) -> None:
-        """Auto-fetch active markets to monitor."""
+        """Auto-fetch active markets to monitor - includes both popular and small markets."""
         try:
             from polymarket_api import GAMMA_API_BASE
             from datetime import datetime, timezone
+            import json as json_module
             
-            # Fetch active markets by 24h volume
+            now = datetime.now(timezone.utc)
+            
+            # Fetch THREE sets of markets for comprehensive coverage:
+            # 1. Popular markets by volume (for general monitoring)
+            # 2. Recent markets (newer markets may be targets)
+            # 3. Low liquidity markets (where insider trading is more likely)
+            
+            all_markets = []
             url = f"{GAMMA_API_BASE}/markets"
-            params = {
+            
+            # Fetch popular markets first
+            params_popular = {
                 "active": "true",
                 "closed": "false",
                 "limit": 50,
@@ -556,14 +566,37 @@ class InsiderDetector:
                 "ascending": "false",
             }
             
-            response = requests.get(url, params=params, timeout=15)
-            if not response.ok:
-                return
+            response = requests.get(url, params=params_popular, timeout=15)
+            if response.ok:
+                all_markets.extend(response.json())
             
-            markets = response.json()
-            now = datetime.now(timezone.utc)
+            # Also fetch smaller/newer markets (sorted by creation date)
+            params_recent = {
+                "active": "true",
+                "closed": "false",
+                "limit": 50,
+                "order": "startDate",
+                "ascending": "false",
+            }
             
-            for market in markets:
+            response = requests.get(url, params=params_recent, timeout=15)
+            if response.ok:
+                all_markets.extend(response.json())
+            
+            # Also fetch by liquidity ascending (smaller markets have less liquidity)
+            params_liquidity = {
+                "active": "true",
+                "closed": "false",
+                "limit": 50,
+                "order": "liquidity",
+                "ascending": "true",
+            }
+            
+            response = requests.get(url, params=params_liquidity, timeout=15)
+            if response.ok:
+                all_markets.extend(response.json())
+            
+            for market in all_markets:
                 market_id = market.get("slug") or str(market.get("id"))
                 
                 # Skip if already monitored
@@ -592,8 +625,7 @@ class InsiderDetector:
                 
                 try:
                     if isinstance(token_ids, str):
-                        import json
-                        token_ids = json.loads(token_ids)
+                        token_ids = json_module.loads(token_ids)
                     token_id = str(token_ids[0]) if token_ids else None
                 except:
                     continue
@@ -619,31 +651,46 @@ class InsiderDetector:
             pass
     
     def _scan_all_markets(self) -> None:
-        """Scan all monitored markets for suspicious trades."""
+        """Scan all monitored markets for suspicious trades - show ALL trades in small markets."""
         for market_id, market_info in list(self.monitored_markets.items()):
             try:
                 token_id = market_info.get("token_id")
                 question = market_info.get("question", "Unknown")
+                market_volume = float(market_info.get("volume", 0))
                 
                 if not token_id:
                     continue
                 
+                # Determine if this is a small market
+                is_small_market = market_volume > 0 and market_volume < self.config.small_market_volume_max
+                is_tiny_market = market_volume > 0 and market_volume < self.config.tiny_market_volume_max
+                
                 # Fetch recent trades
-                trades = fetch_recent_trades(token_id, limit=50)
+                trades = fetch_recent_trades(token_id, limit=100)
                 
                 for trade in trades:
                     trade_size = float(trade.get("size", 0)) * float(trade.get("price", 0))
+                    trade_price = float(trade.get("price", 0))
                     
-                    # Analyze if it's a large trade
-                    if trade_size >= self.config.large_trade_threshold:
+                    # For small markets: analyze ALL trades above a minimal threshold ($100)
+                    # For regular markets: use the normal threshold
+                    if is_tiny_market:
+                        min_trade_size = 100.0  # Show trades $100+ in tiny markets
+                    elif is_small_market:
+                        min_trade_size = 250.0  # Show trades $250+ in small markets
+                    else:
+                        min_trade_size = self.config.large_trade_threshold
+                    
+                    if trade_size >= min_trade_size:
                         self.analyze_trade(
                             market_id=market_id,
                             market_question=question,
-                            trader_address=trade.get("maker", "unknown"),
+                            trader_address=trade.get("maker", trade.get("taker", "unknown")),
                             trade_size=trade_size,
                             trade_side=trade.get("side", "buy"),
-                            outcome="Yes",
-                            price=float(trade.get("price", 0)),
+                            outcome=trade.get("outcome", "Yes"),
+                            price=trade_price,
+                            market_volume=market_volume,
                         )
                         
             except Exception:
@@ -654,21 +701,56 @@ def fetch_recent_trades(token_id: str, limit: int = 100) -> List[Dict]:
     """
     Fetch recent trades for a token from Polymarket API.
     
-    Note: This is a simplified version. The actual implementation would need
-    to use the correct API endpoint when available.
+    Tries multiple API endpoints to get trade data.
     """
+    trades = []
+    
+    # Try the CLOB API trades endpoint first
     try:
-        # The CLOB API trades endpoint (if available)
         url = f"{CLOB_API_BASE}/trades"
         params = {"token_id": token_id, "limit": limit}
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=15)
         
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            if isinstance(data, list):
+                trades = data
+            elif isinstance(data, dict) and "trades" in data:
+                trades = data["trades"]
     except Exception:
         pass
     
-    return []
+    # Try alternative endpoint if first one fails
+    if not trades:
+        try:
+            url = f"{CLOB_API_BASE}/order-book/trades"
+            params = {"token_id": token_id, "limit": limit}
+            response = requests.get(url, params=params, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    trades = data
+                elif isinstance(data, dict) and "trades" in data:
+                    trades = data["trades"]
+        except Exception:
+            pass
+    
+    # Try the gamma API as another fallback
+    if not trades:
+        try:
+            url = f"{GAMMA_API_BASE}/trades"
+            params = {"asset_id": token_id, "limit": limit}
+            response = requests.get(url, params=params, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list):
+                    trades = data
+        except Exception:
+            pass
+    
+    return trades
 
 
 def analyze_order_book_for_large_orders(

@@ -22,6 +22,14 @@ from polymarket_api import (
     compute_resolution_days,
 )
 
+# Import news analyzer for sentiment-based trading
+try:
+    from news_analyzer import NewsAnalyzer, MarketCategory, MarketSignal, get_market_category_display, CATEGORY_KEYWORDS
+    NEWS_ANALYZER_AVAILABLE = True
+except ImportError:
+    NEWS_ANALYZER_AVAILABLE = False
+    MarketCategory = None
+
 
 class BotDecision(Enum):
     BUY = "buy"
@@ -89,6 +97,7 @@ class BotTrade:
     trade_type: str = "long"  # "swing" or "long"
     volume: float = 0.0  # Market volume when trade was made
     resolution_days: float = 0.0  # Days to resolution when traded
+    category: str = "other"  # Market category (politics, crypto, sports, etc.)
     
     @property
     def value(self) -> float:
@@ -114,10 +123,19 @@ class BotTrade:
             "pnl": self.pnl,
             "pnl_pct": self.pnl_pct,
             "status": self.status,
+            "trade_type": self.trade_type,
+            "volume": self.volume,
+            "resolution_days": self.resolution_days,
+            "category": self.category,
         }
     
     @staticmethod
     def from_dict(data: Dict) -> "BotTrade":
+        # Handle missing fields for backwards compatibility
+        data.setdefault('trade_type', 'long')
+        data.setdefault('volume', 0.0)
+        data.setdefault('resolution_days', 0.0)
+        data.setdefault('category', 'other')
         return BotTrade(**data)
 
 
@@ -139,36 +157,121 @@ class BotConfig:
     swing_stop_loss_pct: float = 0.10  # 10% stop loss for swing
     swing_min_volume: float = 50000.0  # Only swing trade on popular markets
     
-    # Market filters
+    # Market filters - LOOSENED for more diversity
     min_price: float = 0.03  # Don't buy below 3 cents
     max_price: float = 0.85  # Don't buy above 85 cents
-    min_days: float = 0.1    # Min 0.1 day to resolution (allow quick markets)
-    max_days: float = 180.0  # Max 180 days
-    min_volume: float = 1000.0  # Min $1000 volume
-    min_liquidity: float = 500.0  # Min $500 liquidity
-    prefer_high_volume: bool = True  # Prioritize popular markets
-    high_volume_threshold: float = 100000.0  # $100k+ is "popular"
+    min_days: float = 0.05   # Min 0.05 day to resolution (allow quick markets)
+    max_days: float = 365.0  # Max 365 days (longer term)
+    min_volume: float = 500.0   # Min $500 volume (lowered)
+    min_liquidity: float = 200.0  # Min $200 liquidity (lowered)
+    prefer_high_volume: bool = False  # DON'T just prioritize popular markets
+    high_volume_threshold: float = 50000.0  # $50k+ is "popular" (lowered)
     
-    # Strategy
-    min_g_score: float = 0.0005  # Minimum growth rate (lowered for swing)
-    min_expected_roi: float = 0.05  # Min 5% expected ROI (lowered for swing)
-    confidence_threshold: float = 0.50  # Lower for more opportunities
-    high_confidence_threshold: float = 0.70  # For full-size trades
+    # Strategy - ADJUSTED for better signals
+    min_g_score: float = 0.0003  # Lower minimum growth rate
+    min_expected_roi: float = 0.03  # Min 3% expected ROI (lowered)
+    confidence_threshold: float = 0.45  # Lower for more opportunities
+    high_confidence_threshold: float = 0.65  # For full-size trades
     
     # Risk management - Long term
-    stop_loss_pct: float = 0.25  # 25% stop loss
-    take_profit_pct: float = 0.40  # 40% take profit
+    stop_loss_pct: float = 0.30  # 30% stop loss
+    take_profit_pct: float = 0.50  # 50% take profit
     
-    # Timing
-    scan_interval_seconds: int = 30  # Faster scanning (30 sec)
-    max_markets_per_scan: int = 150  # Scan more markets
+    # Timing - FASTER scanning
+    scan_interval_seconds: int = 10  # 10 second scanning (was 30)
+    max_markets_per_scan: int = 200  # Scan more markets
+    price_update_interval: int = 5  # Update prices every 5 seconds
     
-    # Positions - NO LIMIT for diversity
-    max_positions: int = 50  # Allow up to 50 positions
-    max_long_term_positions: int = 20  # Long term (>7 days)
+    # Positions - DIVERSITY focused
+    max_positions: int = 60  # Allow up to 60 positions
+    max_long_term_positions: int = 40  # Long term (>7 days)
     max_swing_positions: int = 30  # Swing trades (<7 days)
     skip_recently_scanned: bool = False  # Allow re-scanning
-    market_cooldown_minutes: int = 5  # Only 5 min cooldown
+    market_cooldown_minutes: int = 3  # Only 3 min cooldown (was 5)
+    
+    # Category diversity - ensure we don't only buy sports
+    category_limits: Dict[str, int] = field(default_factory=lambda: {
+        "sports": 10,      # Max 10 sports positions
+        "politics": 10,    # Max 10 politics positions
+        "crypto": 8,       # Max 8 crypto positions
+        "entertainment": 5,
+        "finance": 5,
+        "technology": 5,
+        "world_events": 5,
+        "other": 7,
+    })
+    
+    # News-based trading
+    use_news_analysis: bool = True  # Enable news sentiment analysis
+    news_confidence_boost: float = 0.15  # Boost confidence when news aligns
+    skip_recently_scanned: bool = False  # Allow re-scanning
+    market_cooldown_minutes: int = 3  # Only 3 min cooldown (was 5)
+    
+    # Category diversity - ensure we don't only buy sports
+    category_limits: Dict[str, int] = field(default_factory=lambda: {
+        "sports": 10,      # Max 10 sports positions
+        "politics": 10,    # Max 10 politics positions
+        "crypto": 8,       # Max 8 crypto positions
+        "entertainment": 5,
+        "finance": 5,
+        "technology": 5,
+        "world_events": 5,
+        "other": 7,
+    })
+    
+    # News-based trading
+    use_news_analysis: bool = True  # Enable news sentiment analysis
+    news_confidence_boost: float = 0.15  # Boost confidence when news aligns
+
+
+# Category detection keywords for market classification
+MARKET_CATEGORY_KEYWORDS = {
+    "sports": {
+        "nba", "nfl", "mlb", "nhl", "soccer", "football", "basketball", "baseball",
+        "hockey", "tennis", "golf", "ufc", "boxing", "mma", "championship", "playoffs",
+        "finals", "superbowl", "world series", "team", "game", "match", "vs", "bulls",
+        "lakers", "celtics", "warriors", "rockets", "thunder", "spurs", "heat", "nets",
+        "knicks", "76ers", "bucks", "suns", "clippers", "mavs", "grizzlies", "pelicans",
+        "blazers", "jazz", "kings", "pacers", "hawks", "hornets", "pistons", "magic",
+        "wizards", "cavaliers", "raptors", "timberwolves", "nuggets", "chiefs", "eagles",
+        "cowboys", "patriots", "49ers", "packers", "bills", "ravens", "bengals", "dolphins",
+        "jets", "giants", "commanders", "bears", "lions", "vikings", "saints", "falcons",
+        "panthers", "buccaneers", "cardinals", "rams", "seahawks", "chargers", "raiders",
+        "broncos", "steelers", "browns", "titans", "colts", "texans", "jaguars",
+    },
+    "politics": {
+        "election", "president", "congress", "senate", "governor", "vote", "democrat",
+        "republican", "biden", "trump", "political", "politics", "legislation", "bill",
+        "law", "policy", "campaign", "poll", "ballot", "primary", "caucus", "electoral",
+        "candidate", "administration", "impeach", "veto", "supreme court", "scotus",
+        "cabinet", "secretary", "ambassador", "diplomat", "treaty", "tariff",
+    },
+    "crypto": {
+        "bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency", "blockchain",
+        "defi", "nft", "token", "coin", "wallet", "exchange", "mining", "halving",
+        "altcoin", "solana", "cardano", "dogecoin", "xrp", "ripple", "binance", "coinbase",
+    },
+    "entertainment": {
+        "movie", "film", "oscar", "emmy", "grammy", "music", "album", "celebrity",
+        "hollywood", "netflix", "streaming", "tv", "show", "concert", "tour", "box office",
+        "premiere", "award", "actor", "actress", "singer", "artist", "youtube", "tiktok",
+    },
+    "finance": {
+        "stock", "market", "nasdaq", "s&p", "dow", "fed", "interest rate", "inflation",
+        "gdp", "economy", "economic", "bank", "jerome powell", "earnings", "revenue",
+        "profit", "ipo", "merger", "acquisition", "recession", "bull market", "bear market",
+    },
+    "technology": {
+        "tech", "technology", "ai", "artificial intelligence", "openai", "chatgpt",
+        "google", "apple", "microsoft", "meta", "amazon", "tesla", "nvidia", "startup",
+        "silicon valley", "software", "hardware", "chip", "semiconductor", "robot",
+    },
+    "world_events": {
+        "war", "conflict", "military", "nato", "un", "united nations", "russia", "ukraine",
+        "china", "iran", "israel", "middle east", "climate", "environment", "disaster",
+        "earthquake", "hurricane", "pandemic", "covid", "virus", "health", "who",
+    },
+}
 
 
 class AutoTradingBot:
@@ -221,6 +324,17 @@ class AutoTradingBot:
         self._market_categories: Dict[str, str] = {}  # market_id -> category
         self._scan_offset: int = 0  # For pagination
         
+        # Trade history log (for UI display)
+        self.trade_log: List[Dict] = []  # Recent trades with outcomes
+        
+        # News analyzer (if available)
+        self._news_analyzer: Optional[NewsAnalyzer] = None
+        if NEWS_ANALYZER_AVAILABLE and self.config.use_news_analysis:
+            self._news_analyzer = NewsAnalyzer(
+                cache_duration_minutes=10,
+                on_signal=self._on_news_signal,
+            )
+        
         self._load()
     
     def _now_iso(self) -> str:
@@ -237,6 +351,53 @@ class AutoTradingBot:
     def _generate_trade_id(self) -> str:
         self._trade_counter += 1
         return f"bot_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{self._trade_counter}"
+    
+    def _on_news_signal(self, signal: "MarketSignal") -> None:
+        """Handle news signal from analyzer."""
+        self._log(f"📰 News signal for '{signal.market_question[:40]}...' - {signal.recommendation}", "info")
+    
+    def _detect_category(self, question: str) -> str:
+        """Detect market category from question text."""
+        text_lower = question.lower()
+        
+        category_scores = {}
+        for category, keywords in MARKET_CATEGORY_KEYWORDS.items():
+            score = sum(1 for kw in keywords if kw in text_lower)
+            if score > 0:
+                category_scores[category] = score
+        
+        if category_scores:
+            return max(category_scores, key=category_scores.get)
+        return "other"
+    
+    def _get_category_count(self, category: str) -> int:
+        """Get count of open positions in a category."""
+        return sum(
+            1 for t in self.open_trades.values()
+            if self._market_categories.get(t.market_id, "other") == category
+        )
+    
+    def _add_to_trade_log(self, action: str, question: str, amount: float, price: float, 
+                          pnl: Optional[float] = None, result: Optional[str] = None) -> None:
+        """Add entry to trade log for UI display."""
+        entry = {
+            "timestamp": self._now_iso(),
+            "action": action,  # "BUY" or "SELL"
+            "question": question[:50],
+            "amount": amount,
+            "price": price,
+            "pnl": pnl,
+            "result": result,  # "WIN", "LOSS", or None for buys
+        }
+        self.trade_log.append(entry)
+        
+        # Keep only last 100 entries
+        if len(self.trade_log) > 100:
+            self.trade_log = self.trade_log[-100:]
+    
+    def get_trade_log(self, limit: int = 20) -> List[Dict]:
+        """Get recent trade log entries."""
+        return list(reversed(self.trade_log[-limit:]))
     
     # -------------------------------------------------------------------------
     # Market Scanning
@@ -299,35 +460,34 @@ class AutoTradingBot:
         return opportunities
     
     def _fetch_active_markets(self) -> List[Dict]:
-        """Fetch active markets from Polymarket, prioritizing popular ones."""
+        """Fetch active markets from Polymarket with DIVERSITY focus."""
         all_markets = []
         
         try:
-            # Fetch markets ordered by 24h volume for active trading
             url = f"{GAMMA_API_BASE}/markets"
-            params = {
-                "active": "true",
-                "closed": "false",
-                "limit": 100,
-                "order": "volume24hr",  # Order by recent volume
-                "ascending": "false",
-            }
             
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            all_markets = response.json()
+            # Fetch from multiple orderings to get diverse markets
+            orderings = [
+                ("volume24hr", "false"),   # Active 24h trading
+                ("volumeNum", "false"),    # Total volume
+                ("liquidity", "false"),    # High liquidity
+                ("startDate", "false"),    # Newest markets
+            ]
             
-            # Also fetch by total volume for established markets
-            params2 = {
-                "active": "true",
-                "closed": "false", 
-                "limit": 100,
-                "order": "volumeNum",
-                "ascending": "false",
-            }
-            response2 = requests.get(url, params=params2, timeout=15)
-            if response2.ok:
-                all_markets.extend(response2.json())
+            for order_by, ascending in orderings:
+                try:
+                    params = {
+                        "active": "true",
+                        "closed": "false",
+                        "limit": 80,
+                        "order": order_by,
+                        "ascending": ascending,
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    if response.ok:
+                        all_markets.extend(response.json())
+                except Exception:
+                    continue
             
             # Remove duplicates
             seen = set()
@@ -338,12 +498,14 @@ class AutoTradingBot:
                     seen.add(mid)
                     unique_markets.append(m)
             
-            # Filter markets - CRITICAL: Only include markets with FUTURE end dates
+            # Filter and categorize markets
             valid_markets = []
-            high_volume_markets = []
-            swing_candidates = []
             owned_market_ids = {t.market_id for t in self.open_trades.values()}
             now = datetime.now(timezone.utc)
+            
+            # Track categories for diversity
+            category_markets: Dict[str, List] = {cat: [] for cat in MARKET_CATEGORY_KEYWORDS.keys()}
+            category_markets["other"] = []
             
             for market in unique_markets:
                 end_date_str = market.get("endDate")
@@ -352,34 +514,33 @@ class AutoTradingBot:
                 if market.get("closed"):
                     continue
                 
-                # CRITICAL: Filter out old markets with past end dates
+                # Parse and validate end date
                 try:
-                    # Parse end date
                     if end_date_str.endswith('Z'):
                         end_dt = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
                     else:
                         end_dt = datetime.fromisoformat(end_date_str)
                     
-                    # Make timezone aware if needed
                     if end_dt.tzinfo is None:
                         end_dt = end_dt.replace(tzinfo=timezone.utc)
                     
-                    # Skip markets that have already ended
                     if end_dt <= now:
                         continue
                     
-                    # Calculate days to resolution
                     resolution_days = (end_dt - now).total_seconds() / 86400.0
+                    if resolution_days < self.config.min_days or resolution_days > self.config.max_days:
+                        continue
                 except Exception:
                     continue
                 
                 market_id = market.get("slug") or str(market.get("id"))
+                question = market.get("question") or market.get("title", "")
                 
-                # Skip if we already own this market
+                # Skip owned markets
                 if market_id in owned_market_ids:
                     continue
                 
-                # Skip recently scanned (cooldown)
+                # Skip recently scanned
                 if self.config.skip_recently_scanned and market_id in self._scanned_times:
                     last_scan = self._scanned_times[market_id]
                     if (now - last_scan).total_seconds() < self.config.market_cooldown_minutes * 60:
@@ -392,35 +553,45 @@ class AutoTradingBot:
                 if volume < self.config.min_volume:
                     continue
                 
-                # Add resolution_days to market for later use
+                # Detect category
+                category = self._detect_category(question)
+                self._market_categories[market_id] = category
+                
+                # Check category limit
+                current_cat_count = self._get_category_count(category)
+                cat_limit = self.config.category_limits.get(category, 5)
+                if current_cat_count >= cat_limit:
+                    continue  # Skip - already have enough in this category
+                
+                # Add metadata
                 market['_resolution_days'] = resolution_days
                 market['_volume_24h'] = volume_24h
+                market['_category'] = category
                 
-                # Categorize by volume and resolution time
-                is_swing_candidate = (
-                    resolution_days <= 7 and 
-                    volume >= self.config.swing_min_volume and
-                    volume_24h > 10000  # Active 24h volume
-                )
-                
-                if is_swing_candidate:
-                    swing_candidates.append(market)
-                elif volume >= self.config.high_volume_threshold:
-                    high_volume_markets.append(market)
-                else:
-                    valid_markets.append(market)
+                # Sort into category bucket
+                category_markets[category].append(market)
             
-            # Sort by 24h volume (most active first)
-            swing_candidates.sort(key=lambda x: float(x.get('volume24hr') or 0), reverse=True)
-            high_volume_markets.sort(key=lambda x: float(x.get('volume24hr') or 0), reverse=True)
+            # Build diverse final list - take from each category
+            combined = []
             
-            # Shuffle the rest for variety
-            random.shuffle(valid_markets)
+            # Shuffle within categories for variety
+            for cat, markets in category_markets.items():
+                random.shuffle(markets)
+                # Take top markets from each category proportionally
+                limit = self.config.category_limits.get(cat, 5)
+                combined.extend(markets[:limit * 2])  # 2x limit to have options
             
-            # Combine: swing candidates first, then popular, then others
-            combined = swing_candidates + high_volume_markets + valid_markets
+            # Final shuffle for unpredictability
+            random.shuffle(combined)
             
-            self._log(f"Fetched {len(combined)} markets ({len(swing_candidates)} swing, {len(high_volume_markets)} popular, {len(valid_markets)} others)", "info")
+            # Log category breakdown
+            cat_counts = {cat: len([m for m in combined if m.get('_category') == cat]) 
+                         for cat in MARKET_CATEGORY_KEYWORDS.keys()}
+            cat_counts['other'] = len([m for m in combined if m.get('_category', 'other') == 'other'])
+            
+            cat_summary = ", ".join(f"{c[:3]}:{n}" for c, n in cat_counts.items() if n > 0)
+            self._log(f"Fetched {len(combined)} markets ({cat_summary})", "info")
+            
             return combined
             
         except Exception as e:
@@ -522,6 +693,8 @@ class AutoTradingBot:
                     liquidity=liquidity,
                     resolution_days=resolution_days,
                     g_score=g_score,
+                    market_id=market_id,
+                    question=question,
                 )
                 
                 # Determine decision
@@ -573,41 +746,67 @@ class AutoTradingBot:
         liquidity: float,
         resolution_days: float,
         g_score: float,
+        market_id: str = None,
+        question: str = None,
     ) -> float:
         """Calculate confidence score (0-1)."""
         score = 0.5  # Base confidence
         
         # Volume factor (higher volume = more confidence)
         if volume > 100000:
-            score += 0.15
+            score += 0.12
         elif volume > 50000:
-            score += 0.10
+            score += 0.08
         elif volume > 10000:
             score += 0.05
+        elif volume > 5000:
+            score += 0.03  # Still give small boost for smaller markets
         
         # Liquidity factor
         if liquidity > 10000:
-            score += 0.10
+            score += 0.08
         elif liquidity > 5000:
             score += 0.05
+        elif liquidity > 1000:
+            score += 0.02
         
         # Price factor (mid-range prices are more reliable)
         if 0.20 <= price <= 0.70:
-            score += 0.10
+            score += 0.08
         elif 0.10 <= price <= 0.85:
-            score += 0.05
+            score += 0.04
         
         # Time factor (not too short, not too long)
         if 7 <= resolution_days <= 30:
-            score += 0.10
+            score += 0.08
         elif 3 <= resolution_days <= 60:
             score += 0.05
+        elif 0.5 <= resolution_days <= 90:
+            score += 0.02
         
         # G-score factor
         if g_score > 0.01:
             score += 0.05
+        elif g_score > 0.005:
+            score += 0.03
         
-        return min(score, 1.0)
+        # News sentiment boost (if available)
+        if self._news_analyzer and market_id and question:
+            try:
+                signal = self._news_analyzer.get_cached_signal(market_id)
+                if signal is None:
+                    # Try to generate signal
+                    signal = self._news_analyzer.generate_signal(market_id, question, price)
+                
+                if signal:
+                    # Boost confidence if news aligns with our position
+                    if signal.recommendation == "BUY" and signal.confidence > 0.5:
+                        score += self.config.news_confidence_boost * signal.confidence
+                        self._log(f"📰 News boost for {question[:30]}...: +{signal.confidence:.1%}", "info")
+            except Exception:
+                pass
+        
+        return min(score, 0.95)
     
     def _make_decision(
         self,
@@ -658,16 +857,19 @@ class AutoTradingBot:
             opportunity.resolution_days <= 7
         )
         
-        # Count current positions by type
-        swing_count = sum(1 for t in self.open_trades.values() if t.trade_type == "swing")
-        long_count = sum(1 for t in self.open_trades.values() if t.trade_type == "long")
+        # Count current positions by type (handle missing trade_type for old trades)
+        swing_count = sum(1 for t in self.open_trades.values() if getattr(t, 'trade_type', 'long') == "swing")
+        long_count = sum(1 for t in self.open_trades.values() if getattr(t, 'trade_type', 'long') == "long")
         
-        # Check position limits
+        # Check position limits - LOG WHY WE SKIP
         if is_swing and swing_count >= self.config.max_swing_positions:
+            self._log(f"Skip: Max swing positions ({swing_count}/{self.config.max_swing_positions})", "info")
             return None
         if not is_swing and long_count >= self.config.max_long_term_positions:
+            self._log(f"Skip: Max long positions ({long_count}/{self.config.max_long_term_positions})", "info")
             return None
         if len(self.open_trades) >= self.config.max_positions:
+            self._log(f"Skip: Max total positions ({len(self.open_trades)}/{self.config.max_positions})", "info")
             return None
         
         market_key = f"{opportunity.market_id}|{opportunity.outcome}"
@@ -675,7 +877,7 @@ class AutoTradingBot:
         # Check if already have position
         for trade in self.open_trades.values():
             if trade.market_id == opportunity.market_id and trade.outcome == opportunity.outcome:
-                return None  # Silent skip
+                return None  # Silent skip - already own this
         
         # Determine trade size
         is_test_trade = force_test or (
@@ -707,9 +909,18 @@ class AutoTradingBot:
             trade_label = "LONG"
         
         if position_value < 5:
+            self._log(f"Skip: Position value too small (${position_value:.2f})", "info")
+            return None
+        
+        # Check cash balance
+        if position_value > self.cash_balance:
+            self._log(f"Skip: Not enough cash (need ${position_value:.2f}, have ${self.cash_balance:.2f})", "info")
             return None
         
         shares = position_value / opportunity.price
+        
+        # Detect category before creating trade
+        category = self._detect_category(opportunity.question)
         
         trade = BotTrade(
             id=self._generate_trade_id(),
@@ -725,13 +936,28 @@ class AutoTradingBot:
             trade_type="swing" if is_swing else "long",
             volume=opportunity.volume,
             resolution_days=opportunity.resolution_days,
+            category=category,
         )
         
         self.cash_balance -= position_value
         self.open_trades[trade.id] = trade
         self.total_trades += 1
         
+        # Store category for diversity tracking
+        self._market_categories[opportunity.market_id] = category
+        
+        # Add to trade log
+        self._add_to_trade_log(
+            action="BUY",
+            question=opportunity.question,
+            amount=position_value,
+            price=opportunity.price,
+        )
+        
         days_str = f"{opportunity.resolution_days:.1f}d" if opportunity.resolution_days < 30 else f"{opportunity.resolution_days/30:.1f}mo"
+        cat_emoji = {"sports": "🏈", "politics": "🏛️", "crypto": "₿", "entertainment": "🎬", 
+                     "finance": "📈", "technology": "💻", "world_events": "🌍"}.get(category, "📋")
+        
         self._log(
             f"[{trade_label}] BOUGHT '{opportunity.question[:30]}...' "
             f"| ${position_value:.0f} @ ${opportunity.price:.3f} | Vol: ${opportunity.volume/1000:.0f}k | {days_str}",
@@ -751,25 +977,24 @@ class AutoTradingBot:
                 # Get market key
                 market_key = f"{trade.market_id}|{trade.outcome}"
                 
-                # Get current price - first check scanned markets, then fetch fresh
+                # Get current price - ALWAYS try to fetch fresh first, then fallback to scanned
                 current_price = None
                 
-                if market_key in self.scanned_markets:
-                    opp = self.scanned_markets[market_key]
-                    current_price = opp.price
-                else:
-                    # Try to fetch fresh price from API using slug as query param
-                    try:
-                        url = f"{GAMMA_API_BASE}/markets"
-                        response = requests.get(url, params={"slug": trade.market_id}, timeout=5)
-                        if response.ok:
-                            data = response.json()
-                            # Response is a list when using slug param
-                            if isinstance(data, list) and len(data) > 0:
-                                market_data = data[0]
-                            else:
-                                market_data = data
-                            
+                # Try to fetch fresh price from API using slug as query param
+                try:
+                    url = f"{GAMMA_API_BASE}/markets"
+                    response = requests.get(url, params={"slug": trade.market_id}, timeout=10)
+                    if response.ok:
+                        data = response.json()
+                        # Response is a list when using slug param
+                        if isinstance(data, list) and len(data) > 0:
+                            market_data = data[0]
+                        elif isinstance(data, dict):
+                            market_data = data
+                        else:
+                            market_data = None
+                        
+                        if market_data:
                             prices = market_data.get("outcomePrices")
                             outcomes = market_data.get("outcomes")
                             
@@ -785,12 +1010,17 @@ class AutoTradingBot:
                                         if outcome == trade.outcome and i < len(prices):
                                             current_price = float(prices[i])
                                             break
-                                except:
+                                except Exception:
                                     pass
-                    except:
-                        pass
+                except Exception:
+                    pass
                 
-                # Fallback to current price if fetch failed
+                # Fallback to scanned markets if API fetch failed
+                if current_price is None and market_key in self.scanned_markets:
+                    opp = self.scanned_markets[market_key]
+                    current_price = opp.price
+                
+                # Final fallback to current price if all else failed
                 if current_price is None:
                     current_price = trade.current_price
                 
@@ -848,6 +1078,16 @@ class AutoTradingBot:
         pnl_str = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
         result = "WIN" if trade.pnl >= 0 else "LOSS"
         
+        # Add to trade log
+        self._add_to_trade_log(
+            action="SELL",
+            question=trade.question,
+            amount=proceeds,
+            price=exit_price,
+            pnl=trade.pnl,
+            result=result,
+        )
+        
         self._log(
             f"[{result}] SOLD '{trade.question[:30]}...' - {reason.upper()} - P&L: {pnl_str} ({trade.pnl_pct:+.1%})",
             "trade"
@@ -867,6 +1107,105 @@ class AutoTradingBot:
         exit_price = price or trade.current_price
         self._close_trade(trade, exit_price, "manual")
         return True
+    
+    def _cleanup_stagnant_positions(self, min_positions_to_free: int = 5) -> int:
+        """
+        Sell stagnant positions (near $0 P&L) to free up slots and cash.
+        More aggressive cleanup when at capacity.
+        Returns number of positions closed.
+        """
+        closed_count = 0
+        now = datetime.now(timezone.utc)
+        
+        # Check how full we are
+        positions_used = len(self.open_trades)
+        at_capacity = positions_used >= self.config.max_positions - 2
+        
+        # Find stagnant positions - sorted by how "stuck" they are
+        stagnant_candidates = []
+        
+        for trade_id, trade in list(self.open_trades.items()):
+            # Calculate how long we've held this
+            try:
+                trade_time = datetime.fromisoformat(trade.timestamp.replace('Z', '+00:00'))
+                hours_held = (now - trade_time).total_seconds() / 3600
+            except:
+                hours_held = 24  # Assume 24 hours if can't parse
+            
+            # MORE AGGRESSIVE criteria when at capacity
+            if at_capacity:
+                # At capacity: sell anything flat held > 30 min
+                is_flat = -0.08 <= trade.pnl_pct <= 0.08
+                held_long_enough = hours_held >= 0.5  # 30 minutes
+                is_slight_loss = -0.20 <= trade.pnl_pct < -0.08 and hours_held >= 1
+            else:
+                # Normal: sell flat positions held > 2 hours
+                is_flat = -0.05 <= trade.pnl_pct <= 0.05
+                held_long_enough = hours_held >= 2
+                is_slight_loss = -0.15 <= trade.pnl_pct < -0.05 and hours_held >= 6
+            
+            if (is_flat and held_long_enough) or is_slight_loss:
+                # Score: prefer to close positions that are most flat and oldest
+                flatness_score = 1 - abs(trade.pnl_pct)  # Flatter = higher score
+                age_score = min(hours_held / 24, 1.0)  # Older = higher score
+                # Add small loss penalty - prefer selling break-even over losses
+                loss_penalty = 0.1 if trade.pnl_pct < 0 else 0
+                total_score = flatness_score * 0.5 + age_score * 0.4 - loss_penalty
+                
+                stagnant_candidates.append((trade_id, trade, total_score, hours_held))
+        
+        # Sort by score (highest first = most stagnant)
+        stagnant_candidates.sort(key=lambda x: x[2], reverse=True)
+        
+        # How many to close - more aggressive when at capacity
+        to_close = min_positions_to_free if not at_capacity else max(min_positions_to_free, 8)
+        
+        # Close positions
+        for trade_id, trade, score, hours_held in stagnant_candidates[:to_close]:
+            pnl_str = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
+            self._log(
+                f"🧹 Closing stagnant: '{trade.question[:25]}...' | "
+                f"{pnl_str} ({trade.pnl_pct:+.1%}) | {hours_held:.1f}h",
+                "info"
+            )
+            self._close_trade(trade, trade.current_price, "stagnant")
+            closed_count += 1
+        
+        if closed_count > 0:
+            self._log(f"🧹 Freed {closed_count} slot(s) - Now {len(self.open_trades)}/{self.config.max_positions} positions", "success")
+        
+        return closed_count
+    
+    def _force_sell_worst_performers(self, count: int = 5) -> int:
+        """
+        Force sell the worst performing positions when at capacity.
+        Used as last resort when no stagnant positions found.
+        """
+        if not self.open_trades:
+            return 0
+        
+        # Sort all positions by P&L percentage (worst first)
+        sorted_trades = sorted(
+            self.open_trades.items(),
+            key=lambda x: x[1].pnl_pct
+        )
+        
+        closed = 0
+        for trade_id, trade in sorted_trades[:count]:
+            # Only force sell if not too much of a loss (avoid locking in huge losses)
+            if trade.pnl_pct > -0.25:  # Don't sell if down more than 25%
+                pnl_str = f"+${trade.pnl:.2f}" if trade.pnl >= 0 else f"-${abs(trade.pnl):.2f}"
+                self._log(
+                    f"⚡ Force selling: '{trade.question[:25]}...' | {pnl_str} ({trade.pnl_pct:+.1%})",
+                    "alert"
+                )
+                self._close_trade(trade, trade.current_price, "forced")
+                closed += 1
+        
+        if closed > 0:
+            self._log(f"⚡ Force sold {closed} position(s) to make room", "alert")
+        
+        return closed
     
     # -------------------------------------------------------------------------
     # Auto-Trading Loop
@@ -895,13 +1234,39 @@ class AutoTradingBot:
         """Main trading loop."""
         while self._running:
             try:
+                # First, ALWAYS check if we need to clean up stagnant positions
+                positions_used = len(self.open_trades)
+                positions_limit = self.config.max_positions
+                long_count = sum(1 for t in self.open_trades.values() if getattr(t, 'trade_type', 'long') == "long")
+                cash_low = self.cash_balance < 200  # Less than $200 cash
+                at_long_limit = long_count >= self.config.max_long_term_positions
+                near_capacity = positions_used >= (positions_limit - 3)
+                
+                # Clean up if at any limit
+                if near_capacity or cash_low or at_long_limit:
+                    self._log(f"📊 Capacity check: {positions_used}/{positions_limit} pos, {long_count}/{self.config.max_long_term_positions} long, ${self.cash_balance:.0f} cash", "info")
+                    freed = self._cleanup_stagnant_positions(min_positions_to_free=8)
+                    if freed == 0 and near_capacity:
+                        # Force sell the worst performers if still at capacity
+                        self._force_sell_worst_performers(count=5)
+                
                 # Scan for opportunities
                 opportunities = self.scan_markets()
                 
-                # Execute trades on best opportunities
-                for opp in opportunities[:5]:  # Top 5
-                    if opp.decision == BotDecision.BUY:
-                        self.execute_trade(opp)
+                # Execute trades on ALL buy opportunities (not just top 5)
+                buy_opportunities = [o for o in opportunities if o.decision == BotDecision.BUY]
+                executed = 0
+                
+                for opp in buy_opportunities[:20]:  # Try up to 20 opportunities
+                    result = self.execute_trade(opp)
+                    if result:
+                        executed += 1
+                        if executed >= 5:  # Max 5 trades per scan cycle
+                            break
+                
+                if buy_opportunities and executed == 0 and len(self.open_trades) >= positions_limit - 2:
+                    self._log(f"⚠️ At capacity ({positions_used}/{positions_limit}). Selling stagnant positions...", "alert")
+                    self._cleanup_stagnant_positions(min_positions_to_free=10)
                 
                 # Update existing positions
                 self.update_positions()
@@ -910,6 +1275,7 @@ class AutoTradingBot:
                 for _ in range(self.config.scan_interval_seconds):
                     if not self._running:
                         break
+                    time.sleep(1)
                     time.sleep(1)
                     
             except Exception as e:
@@ -1042,6 +1408,8 @@ class AutoTradingBot:
                 "total_pnl": self.total_pnl,
                 "blacklist": list(self.blacklist),
                 "trade_counter": self._trade_counter,
+                "trade_log": self.trade_log[-100:],  # Save last 100 trade log entries
+                "market_categories": self._market_categories,
             }
             self.storage_path.write_text(json.dumps(data, indent=2))
         except Exception:
@@ -1061,6 +1429,8 @@ class AutoTradingBot:
                 self.total_pnl = data.get("total_pnl", 0.0)
                 self.blacklist = set(data.get("blacklist", []))
                 self._trade_counter = data.get("trade_counter", 0)
+                self.trade_log = data.get("trade_log", [])
+                self._market_categories = data.get("market_categories", {})
         except Exception:
             pass
     
@@ -1076,5 +1446,7 @@ class AutoTradingBot:
         self.losing_trades = 0
         self.total_pnl = 0.0
         self._trade_counter = 0
+        self.trade_log = []
+        self._market_categories = {}
         self._save()
         self._log("🔄 Bot has been reset", "info")

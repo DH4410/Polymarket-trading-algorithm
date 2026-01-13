@@ -39,6 +39,13 @@ from polymarket_api import (
 )
 from runtime_state import parse_volume, extract_parent_event, _now_iso
 
+# Try to import news analyzer
+try:
+    from news_analyzer import NewsAnalyzer, MarketCategory, get_market_category_display
+    NEWS_ANALYZER_AVAILABLE = True
+except ImportError:
+    NEWS_ANALYZER_AVAILABLE = False
+
 
 # Paths
 CONFIG_PATH = Path("config.yaml")
@@ -427,11 +434,12 @@ class TradingBotApp(tk.Tk):
             config=BotConfig(
                 initial_capital=10000.0,
                 max_position_size=500.0,
-                min_volume=1000.0,
-                scan_interval_seconds=30,  # Fast scanning
+                min_volume=500.0,       # Lowered for diversity
+                scan_interval_seconds=10,  # FASTER scanning (10 sec)
                 max_positions=50,  # Allow many positions
                 swing_trade_enabled=True,  # Enable swing trading
-                prefer_high_volume=True,  # Focus on popular markets
+                prefer_high_volume=False,  # DON'T just focus on popular markets
+                use_news_analysis=NEWS_ANALYZER_AVAILABLE,  # Use news if available
             ),
             storage_path=BOT_STATE_PATH,
             on_trade=self._on_bot_trade,
@@ -440,12 +448,17 @@ class TradingBotApp(tk.Tk):
         )
         
         # Initialize insider detector (monitors ALL scanned markets)
+        # Lower thresholds to catch more trades in smaller markets
         self.insider_detector = InsiderDetector(
             config=InsiderDetectorConfig(
-                large_trade_threshold=1000.0,
-                small_market_threshold=500.0,
+                large_trade_threshold=500.0,  # Show trades $500+ in normal markets
+                small_market_threshold=100.0,  # Show trades $100+ in small markets
+                small_market_volume_max=100000.0,  # Markets under $100k are "small"
+                tiny_market_volume_max=25000.0,  # Markets under $25k are "tiny"
                 monitor_small_markets=True,
                 poll_interval_seconds=15,  # Fast polling
+                small_market_trade_pct=0.01,  # 1% of market volume triggers alert
+                max_alerts_stored=1000,  # Keep more alerts
             ),
             storage_path=INSIDER_PATH,
         )
@@ -487,10 +500,11 @@ class TradingBotApp(tk.Tk):
     
     def _build_ui(self) -> None:
         """Build the main UI."""
-        # Configure grid
+        # Configure grid - 2 columns, 2 rows for main content
         self.grid_columnconfigure(0, weight=3)  # Left panel (chat)
         self.grid_columnconfigure(1, weight=2)  # Right panel (markets/positions)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(1, weight=3)     # Main content row
+        self.grid_rowconfigure(2, weight=1)     # Bottom row for trade log
         
         # Top bar
         self._build_top_bar()
@@ -500,6 +514,15 @@ class TradingBotApp(tk.Tk):
         
         # Right panel - Markets and positions
         self._build_right_panel()
+        
+        # Bottom left - Stats Dashboard
+        self._build_stats_dashboard()
+        
+        # Bottom right - Trade Log
+        self._build_trade_log_panel()
+        
+        # Track last update time for throttling
+        self._last_ui_update = 0
     
     def _build_top_bar(self) -> None:
         """Build the top navigation bar."""
@@ -624,28 +647,58 @@ class TradingBotApp(tk.Tk):
         self.notebook = ttk.Notebook(right_panel)
         self.notebook.pack(fill=tk.BOTH, expand=True)
         
-        # Configure notebook style
+        # Configure notebook style for dark theme
         style = ttk.Style()
-        style.configure("TNotebook", background=Theme.BG_PRIMARY)
-        style.configure("TNotebook.Tab", 
-            background=Theme.BG_SECONDARY,
-            foreground=Theme.TEXT_PRIMARY,
-            padding=[15, 8],
+        
+        # Use clam theme as base (better for customization)
+        try:
+            style.theme_use("clam")
+        except:
+            pass
+        
+        # Configure the notebook itself
+        style.configure("TNotebook", 
+            background=Theme.BG_PRIMARY,
+            borderwidth=0,
+            tabmargins=[0, 0, 0, 0],
         )
         
-        # Tab 1: Markets
+        style.configure("TNotebook.Tab", 
+            background=Theme.BG_TERTIARY,
+            foreground=Theme.TEXT_PRIMARY,
+            padding=[15, 8],
+            borderwidth=0,
+            font=("Segoe UI", 10),
+        )
+        
+        # Map for different states (selected, active, etc.)
+        style.map("TNotebook.Tab",
+            background=[
+                ("selected", Theme.BG_SECONDARY),
+                ("active", Theme.BG_HOVER),
+                ("!selected", Theme.BG_TERTIARY),
+            ],
+            foreground=[
+                ("selected", Theme.TEXT_PRIMARY),
+                ("active", Theme.TEXT_PRIMARY),
+                ("!selected", Theme.TEXT_SECONDARY),
+            ],
+            expand=[("selected", [1, 1, 1, 0])],
+        )
+        
+        # Tab 1: Trading (Markets)
         markets_tab = tk.Frame(self.notebook, bg=Theme.BG_PRIMARY)
-        self.notebook.add(markets_tab, text="Markets")
+        self.notebook.add(markets_tab, text="  Trading  ")
         self._build_markets_tab(markets_tab)
         
         # Tab 2: Bot Positions
         positions_tab = tk.Frame(self.notebook, bg=Theme.BG_PRIMARY)
-        self.notebook.add(positions_tab, text="Bot Positions")
+        self.notebook.add(positions_tab, text="  Positions  ")
         self._build_positions_tab(positions_tab)
         
         # Tab 3: Alerts
         alerts_tab = tk.Frame(self.notebook, bg=Theme.BG_PRIMARY)
-        self.notebook.add(alerts_tab, text="Alerts")
+        self.notebook.add(alerts_tab, text="  Alerts  ")
         self._build_alerts_tab(alerts_tab)
     
     def _build_markets_tab(self, parent: tk.Frame) -> None:
@@ -702,6 +755,207 @@ class TradingBotApp(tk.Tk):
                 width=e.width
             ) if self.markets_canvas.find_all() else None)
     
+    def _build_trade_log_panel(self) -> None:
+        """Build the bottom right trade log panel."""
+        log_panel = tk.Frame(self, bg=Theme.BG_SECONDARY)
+        log_panel.grid(row=2, column=1, sticky="nsew", padx=(5, 10), pady=(5, 10))
+        
+        # Header
+        header = tk.Frame(log_panel, bg=Theme.BG_SECONDARY)
+        header.pack(fill=tk.X, padx=10, pady=(10, 5))
+        
+        tk.Label(
+            header,
+            text="📊 Trade Log",
+            font=("Segoe UI", 11, "bold"),
+            bg=Theme.BG_SECONDARY,
+            fg=Theme.TEXT_PRIMARY,
+        ).pack(side=tk.LEFT)
+        
+        self.trade_log_count = tk.Label(
+            header,
+            text="0 trades",
+            font=("Segoe UI", 9),
+            bg=Theme.BG_SECONDARY,
+            fg=Theme.TEXT_MUTED,
+        )
+        self.trade_log_count.pack(side=tk.RIGHT)
+        
+        # Trade log text area with scroll
+        log_container = tk.Frame(log_panel, bg=Theme.BG_SECONDARY)
+        log_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        self.trade_log_text = tk.Text(
+            log_container,
+            bg=Theme.BG_PRIMARY,
+            fg=Theme.TEXT_PRIMARY,
+            font=("Consolas", 9),
+            wrap=tk.WORD,
+            relief=tk.FLAT,
+            padx=8,
+            pady=8,
+            height=8,
+            state=tk.DISABLED,
+            highlightthickness=1,
+            highlightbackground=Theme.BORDER,
+        )
+        
+        scrollbar = ttk.Scrollbar(log_container, command=self.trade_log_text.yview)
+        self.trade_log_text.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.trade_log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Configure tags for trade log
+        self.trade_log_text.tag_configure("buy", foreground=Theme.ACCENT_GREEN)
+        self.trade_log_text.tag_configure("sell_win", foreground=Theme.ACCENT_GREEN)
+        self.trade_log_text.tag_configure("sell_loss", foreground=Theme.ACCENT_RED)
+        self.trade_log_text.tag_configure("timestamp", foreground=Theme.TEXT_MUTED)
+        self.trade_log_text.tag_configure("amount", foreground=Theme.ACCENT_BLUE)
+        self.trade_log_text.tag_configure("pnl_pos", foreground=Theme.PROFIT)
+        self.trade_log_text.tag_configure("pnl_neg", foreground=Theme.LOSS)
+    
+    def _build_stats_dashboard(self) -> None:
+        """Build the bottom left stats dashboard panel."""
+        stats_panel = tk.Frame(self, bg=Theme.BG_SECONDARY)
+        stats_panel.grid(row=2, column=0, sticky="nsew", padx=(10, 5), pady=(5, 10))
+        
+        # Header
+        header = tk.Frame(stats_panel, bg=Theme.BG_SECONDARY)
+        header.pack(fill=tk.X, padx=10, pady=(10, 5))
+        
+        tk.Label(
+            header,
+            text="📈 Performance Dashboard",
+            font=("Segoe UI", 11, "bold"),
+            bg=Theme.BG_SECONDARY,
+            fg=Theme.TEXT_PRIMARY,
+        ).pack(side=tk.LEFT)
+        
+        # Main content area
+        content = tk.Frame(stats_panel, bg=Theme.BG_SECONDARY)
+        content.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        # Left stats column
+        left_col = tk.Frame(content, bg=Theme.BG_CARD)
+        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        
+        tk.Label(left_col, text="Session Stats", font=("Segoe UI", 9, "bold"),
+                bg=Theme.BG_CARD, fg=Theme.TEXT_PRIMARY).pack(pady=(8, 4))
+        
+        # Create labels for session stats
+        self.session_stats_frame = tk.Frame(left_col, bg=Theme.BG_CARD)
+        self.session_stats_frame.pack(fill=tk.X, padx=8, pady=4)
+        
+        self.stat_labels = {}
+        for stat_name in ["Trades Today", "Win Rate", "Avg P&L", "Best Trade", "Worst Trade"]:
+            row = tk.Frame(self.session_stats_frame, bg=Theme.BG_CARD)
+            row.pack(fill=tk.X, pady=1)
+            tk.Label(row, text=stat_name, font=("Segoe UI", 8), 
+                    bg=Theme.BG_CARD, fg=Theme.TEXT_MUTED).pack(side=tk.LEFT)
+            self.stat_labels[stat_name] = tk.Label(row, text="--", font=("Segoe UI", 8, "bold"),
+                    bg=Theme.BG_CARD, fg=Theme.TEXT_PRIMARY)
+            self.stat_labels[stat_name].pack(side=tk.RIGHT)
+        
+        # Right - Category breakdown
+        right_col = tk.Frame(content, bg=Theme.BG_CARD)
+        right_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        
+        tk.Label(right_col, text="Portfolio by Category", font=("Segoe UI", 9, "bold"),
+                bg=Theme.BG_CARD, fg=Theme.TEXT_PRIMARY).pack(pady=(8, 4))
+        
+        self.category_frame = tk.Frame(right_col, bg=Theme.BG_CARD)
+        self.category_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        
+        # Category colors
+        self.category_colors = {
+            "politics": "#E74C3C",
+            "crypto": "#F39C12", 
+            "sports": "#2ECC71",
+            "finance": "#3498DB",
+            "entertainment": "#9B59B6",
+            "science": "#1ABC9C",
+            "world": "#34495E",
+            "other": "#95A5A6",
+        }
+    
+    def _update_stats_dashboard(self) -> None:
+        """Update the stats dashboard with current data."""
+        try:
+            stats = self.bot.get_stats()
+            trades = self.bot.get_open_trades()
+            
+            # Calculate session stats
+            total_trades = stats.get('total_trades', 0)
+            win_rate = stats.get('win_rate', 0)
+            
+            # Find best and worst trades from current positions
+            best_pnl = 0
+            worst_pnl = 0
+            total_pnl = 0
+            for trade in trades:
+                # Use pnl_pct which is the attribute on BotTrade
+                pnl_pct = getattr(trade, 'pnl_pct', 0)
+                total_pnl += pnl_pct
+                if pnl_pct > best_pnl:
+                    best_pnl = pnl_pct
+                if pnl_pct < worst_pnl:
+                    worst_pnl = pnl_pct
+            
+            avg_pnl = total_pnl / len(trades) if trades else 0
+            
+            # Update stat labels
+            self.stat_labels["Trades Today"].configure(text=str(total_trades))
+            self.stat_labels["Win Rate"].configure(
+                text=f"{win_rate:.1f}%",
+                fg=Theme.PROFIT if win_rate >= 50 else Theme.LOSS
+            )
+            self.stat_labels["Avg P&L"].configure(
+                text=f"{avg_pnl:+.1f}%",
+                fg=Theme.PROFIT if avg_pnl >= 0 else Theme.LOSS
+            )
+            self.stat_labels["Best Trade"].configure(
+                text=f"+{best_pnl:.1f}%" if best_pnl > 0 else "--",
+                fg=Theme.PROFIT
+            )
+            self.stat_labels["Worst Trade"].configure(
+                text=f"{worst_pnl:.1f}%" if worst_pnl < 0 else "--",
+                fg=Theme.LOSS
+            )
+            
+            # Update category breakdown
+            for widget in self.category_frame.winfo_children():
+                widget.destroy()
+            
+            # Count positions by category
+            category_counts = {}
+            for trade in trades:
+                cat = getattr(trade, 'category', 'other') or 'other'
+                category_counts[cat] = category_counts.get(cat, 0) + 1
+            
+            if category_counts:
+                total = sum(category_counts.values())
+                for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
+                    pct = (count / total) * 100
+                    color = self.category_colors.get(cat, "#95A5A6")
+                    
+                    row = tk.Frame(self.category_frame, bg=Theme.BG_CARD)
+                    row.pack(fill=tk.X, pady=1)
+                    
+                    # Category name
+                    tk.Label(row, text=cat.capitalize(), font=("Segoe UI", 8),
+                            bg=Theme.BG_CARD, fg=color).pack(side=tk.LEFT)
+                    
+                    # Count and percentage
+                    tk.Label(row, text=f"{count} ({pct:.0f}%)", font=("Segoe UI", 8),
+                            bg=Theme.BG_CARD, fg=Theme.TEXT_MUTED).pack(side=tk.RIGHT)
+            else:
+                tk.Label(self.category_frame, text="No positions yet", font=("Segoe UI", 8),
+                        bg=Theme.BG_CARD, fg=Theme.TEXT_MUTED).pack()
+                        
+        except Exception as e:
+            print(f"Error updating stats dashboard: {e}")
+
     def _build_positions_tab(self, parent: tk.Frame) -> None:
         """Build the positions tab."""
         # Stats row
@@ -1138,31 +1392,46 @@ class TradingBotApp(tk.Tk):
             row.pack(fill=tk.X, pady=2)
     
     def _update_positions_display(self) -> None:
-        """Update the positions list."""
-        for widget in self.positions_frame.winfo_children():
-            widget.destroy()
-        
+        """Update the positions list with optimized rendering."""
         trades = self.bot.get_open_trades()
-        self.positions_count.configure(text=f"{len(trades)} positions")
         
-        if not trades:
-            tk.Label(
-                self.positions_frame,
-                text="No open positions.\nThe bot will show positions here when it trades.",
-                font=("Segoe UI", 10),
-                bg=Theme.BG_PRIMARY,
-                fg=Theme.TEXT_MUTED,
-                pady=30,
-            ).pack()
-            return
+        # Check if position count changed - only rebuild if needed
+        current_count = len(trades)
+        current_ids = set(t.id for t in trades)
         
-        for trade in trades:
-            row = PositionRow(
-                self.positions_frame,
-                trade,
-                on_sell=self._sell_position,
-            )
-            row.pack(fill=tk.X, pady=2)
+        # Store state for comparison
+        if not hasattr(self, '_last_position_ids'):
+            self._last_position_ids = set()
+        
+        # Only rebuild widgets if positions changed
+        needs_rebuild = (current_ids != self._last_position_ids)
+        
+        self.positions_count.configure(text=f"{current_count} positions")
+        
+        if needs_rebuild:
+            self._last_position_ids = current_ids
+            
+            for widget in self.positions_frame.winfo_children():
+                widget.destroy()
+            
+            if not trades:
+                tk.Label(
+                    self.positions_frame,
+                    text="No open positions.\nThe bot will show positions here when it trades.",
+                    font=("Segoe UI", 10),
+                    bg=Theme.BG_PRIMARY,
+                    fg=Theme.TEXT_MUTED,
+                    pady=30,
+                ).pack()
+                return
+            
+            for trade in trades:
+                row = PositionRow(
+                    self.positions_frame,
+                    trade,
+                    on_sell=self._sell_position,
+                )
+                row.pack(fill=tk.X, pady=2)
     
     def _update_stats(self) -> None:
         """Update portfolio statistics."""
@@ -1212,14 +1481,16 @@ class TradingBotApp(tk.Tk):
         if not alerts:
             tk.Label(
                 self.alerts_frame,
-                text="Monitoring small markets for insider activity...\n\n"
+                text="Monitoring ALL markets for insider activity...\n\n"
                      "The bot watches for:\n"
-                     "- Trades >$1,000 in small markets (<$50k volume)\n"
-                     "- New accounts (<14 days old) placing big bets\n"
-                     "- Trades >5% of total market volume\n"
-                     "- Unusual volume spikes\n\n"
+                     "• Trades >$100 in tiny markets (<$25k volume)\n"
+                     "• Trades >$250 in small markets (<$100k volume)\n"
+                     "• Trades >$500 in normal markets\n"
+                     "• Trades >1% of total market volume\n"
+                     "• New accounts (<14 days) placing bets\n"
+                     "• Unusual volume spikes (2.5x normal)\n\n"
                      "MAJOR alerts ($100k+) will appear in Bot Activity.\n\n"
-                     f"Currently monitoring: {len(self.tracked_markets)} markets",
+                     f"Currently monitoring: {len(self.insider_detector.monitored_markets)} markets",
                 font=("Segoe UI", 10),
                 bg=Theme.BG_PRIMARY,
                 fg=Theme.TEXT_MUTED,
@@ -1302,6 +1573,65 @@ class TradingBotApp(tk.Tk):
                 fg=Theme.TEXT_SECONDARY,
             ).pack(anchor="w", pady=(2, 0))
     
+    def _update_trade_log_display(self) -> None:
+        """Update the trade log panel with recent trades."""
+        trade_log = self.bot.get_trade_log(limit=30)
+        
+        self.trade_log_count.configure(text=f"{len(trade_log)} recent trades")
+        
+        self.trade_log_text.configure(state=tk.NORMAL)
+        self.trade_log_text.delete(1.0, tk.END)
+        
+        if not trade_log:
+            self.trade_log_text.insert(tk.END, "No trades yet.\n", "timestamp")
+            self.trade_log_text.insert(tk.END, "When the bot makes trades, they will appear here with:\n")
+            self.trade_log_text.insert(tk.END, "• Buy/Sell action\n")
+            self.trade_log_text.insert(tk.END, "• Amount traded\n")
+            self.trade_log_text.insert(tk.END, "• P&L outcome\n")
+            self.trade_log_text.configure(state=tk.DISABLED)
+            return
+        
+        for entry in trade_log:
+            # Parse timestamp
+            try:
+                ts = datetime.fromisoformat(entry['timestamp'].replace('Z', '+00:00'))
+                time_str = ts.strftime("%H:%M:%S")
+            except:
+                time_str = entry['timestamp'][:8]
+            
+            # Format based on action
+            if entry['action'] == "BUY":
+                self.trade_log_text.insert(tk.END, f"[{time_str}] ", "timestamp")
+                self.trade_log_text.insert(tk.END, "BUY ", "buy")
+                self.trade_log_text.insert(tk.END, f"${entry['amount']:.0f} ", "amount")
+                self.trade_log_text.insert(tk.END, f"@ ${entry['price']:.3f}\n")
+                # Question on next line
+                q_text = entry['question'][:45] + "..." if len(entry['question']) > 45 else entry['question']
+                self.trade_log_text.insert(tk.END, f"         {q_text}\n", "timestamp")
+            
+            elif entry['action'] == "SELL":
+                self.trade_log_text.insert(tk.END, f"[{time_str}] ", "timestamp")
+                
+                result = entry.get('result', 'UNKNOWN')
+                pnl = entry.get('pnl', 0)
+                
+                if result == "WIN":
+                    self.trade_log_text.insert(tk.END, "SELL ", "sell_win")
+                    self.trade_log_text.insert(tk.END, f"${entry['amount']:.0f} ", "amount")
+                    self.trade_log_text.insert(tk.END, "→ ", "timestamp")
+                    self.trade_log_text.insert(tk.END, f"+${pnl:.2f} ✓\n", "pnl_pos")
+                else:
+                    self.trade_log_text.insert(tk.END, "SELL ", "sell_loss")
+                    self.trade_log_text.insert(tk.END, f"${entry['amount']:.0f} ", "amount")
+                    self.trade_log_text.insert(tk.END, "→ ", "timestamp")
+                    self.trade_log_text.insert(tk.END, f"-${abs(pnl):.2f} ✗\n", "pnl_neg")
+                
+                q_text = entry['question'][:45] + "..." if len(entry['question']) > 45 else entry['question']
+                self.trade_log_text.insert(tk.END, f"         {q_text}\n", "timestamp")
+        
+        self.trade_log_text.configure(state=tk.DISABLED)
+        self.trade_log_text.see(tk.END)
+    
     def _show_settings(self) -> None:
         """Show settings dialog."""
         dialog = tk.Toplevel(self)
@@ -1366,21 +1696,35 @@ class TradingBotApp(tk.Tk):
         def update():
             self._update_counter += 1
             
-            # Always update positions when bot is running
-            if self.bot.is_running():
+            # ALWAYS update positions to get fresh prices (even when bot not running)
+            # This ensures P&L is always calculated with current market prices
+            try:
                 self.bot.update_positions()
+            except Exception:
+                pass
             
-            # Update stats every tick (2 seconds)
+            # Update stats every tick (2 seconds) - lightweight operation
             self._update_stats()
-            self._update_positions_display()
             
-            # Update alerts every 3 ticks (6 seconds)
+            # Update positions every 2 ticks (4 seconds) - heavier operation
+            if self._update_counter % 2 == 0:
+                self._update_positions_display()
+                self._update_stats_dashboard()
+            
+            # Update trade log every 3 ticks (6 seconds)
             if self._update_counter % 3 == 0:
+                self._update_trade_log_display()
+            
+            # Update alerts every 4 ticks (8 seconds)
+            if self._update_counter % 4 == 0:
                 self._update_alerts_display()
             
-            # Faster refresh: 2 seconds
+            # Refresh: 2 seconds
             self.after(2000, update)
         
+        # Initial updates
+        self._update_trade_log_display()
+        self._update_stats_dashboard()
         self.after(2000, update)
     
     def _load_markets(self) -> None:
