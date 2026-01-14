@@ -1223,6 +1223,10 @@ class TradingBotApp(tk.Tk):
                         "INSIDER"
                     )
                     self._update_alerts_display()
+                
+                elif msg_type == "positions_updated":
+                    # Positions data was updated in background, now update UI
+                    self._update_stats()
                     
         except queue.Empty:
             pass
@@ -1786,25 +1790,32 @@ class TradingBotApp(tk.Tk):
         """Start periodic UI updates - faster refresh for real-time feel."""
         self._update_counter = 0
         self._log_check_counter = 0
+        self._position_update_in_progress = False  # Prevent overlapping updates
+        
+        def update_positions_background():
+            """Update positions in background thread to avoid UI freeze."""
+            if self._position_update_in_progress:
+                return  # Skip if previous update still running
+            
+            self._position_update_in_progress = True
+            try:
+                self.bot.update_positions()
+                # Signal main thread that positions are updated
+                self.message_queue.put(("positions_updated", None))
+            except Exception as e:
+                print(f"[Update] Position update error: {e}")
+            finally:
+                self._position_update_in_progress = False
         
         def update():
             self._update_counter += 1
             self._log_check_counter += 1
             
-            # ALWAYS update positions to get fresh prices (even when bot not running)
-            # This ensures P&L is always calculated with current market prices
-            try:
-                self.bot.update_positions()
-            except Exception as e:
-                print(f"[Update] Position update error: {e}")
+            # Update positions in BACKGROUND thread to avoid UI freeze
+            # This makes HTTP requests and can take several seconds
+            threading.Thread(target=update_positions_background, daemon=True).start()
             
-            # Update stats every tick (2 seconds) - lightweight operation
-            try:
-                self._update_stats()
-            except Exception as e:
-                print(f"[Update] Stats error: {e}")
-            
-            # Update positions every 2 ticks (4 seconds) - heavier operation
+            # Update positions display every 2 ticks (4 seconds) - UI only, no network
             if self._update_counter % 2 == 0:
                 try:
                     self._update_positions_display()
