@@ -1,0 +1,101 @@
+timestamp,type,title,message
+2026-01-15T14:05:41.005804,info,,      └─ Days to resolve: 87.5
+2026-01-15T14:05:41.006000,info,,"      └─ Volume: $6,356 | Liquidity: $9,991"
+2026-01-15T14:05:41.006326,info,,      └─ G-Score: 0.03721 (min: 0.0003)
+2026-01-15T14:05:41.006487,info,,"      └─ Confidence: 73.8% = 50% base + [vol>5k: +3%, liq>5k: +5%, time-ok: +2%, g>0.01: +5%, news: +9%]"
+2026-01-15T14:05:41.269955,success,,"      └─ 🟢 DECISION: STRONG BUY (g=0.0372, ROI=2586.9%, conf=73.8%)"
+2026-01-15T14:05:41.276147,info,,  📊 EVALUATING: Will Phil Murphy announce a Presidential run ...
+2026-01-15T14:05:41.282077,info,,      └─ Price: $0.032 | Outcome: Yes
+2026-01-15T14:05:41.288488,info,,      └─ Days to resolve: 349.5
+2026-01-15T14:05:41.292329,info,,"      └─ Volume: $1,590 | Liquidity: $994"
+2026-01-15T14:05:41.300243,info,,      └─ G-Score: 0.00977 (min: 0.0003)
+2026-01-15T14:05:41.306867,info,,"      └─ Confidence: 62.3% = 50% base + [g>0.005: +3%, news: +9%]"
+2026-01-15T14:05:41.309729,success,,"      └─ 🟢 DECISION: BUY (g=0.0098, ROI=2964.5%)"
+2026-01-15T14:05:41.316187,info,,  📊 EVALUATING: 2026 U.S. Senate Election: Democrats flip Rep...
+2026-01-15T14:05:41.325470,info,,      └─ Price: $0.075 | Outcome: Yes
+2026-01-15T14:05:41.589701,info,,      └─ Days to resolve: 74.5
+2026-01-15T14:05:41.589991,info,,"      └─ Volume: $19,053 | Liquidity: $9,946"
+2026-01-15T14:05:41.590151,info,,      └─ G-Score: 0.03408 (min: 0.0003)
+2026-01-15T14:05:41.590298,info,,"      └─ Confidence: 77.1% = 50% base + [vol>10k: +5%, liq>5k: +5%, time-ok: +2%, g>0.01: +5%, news: +10%]"
+2026-01-15T14:05:41.590660,success,,"      └─ 🟢 DECISION: STRONG BUY (g=0.0341, ROI=1208.7%, conf=77.1%)"
+2026-01-15T14:05:41.590998,info,,  📊 EVALUATING: Nord Stream pipeline turned on before 2027?...
+2026-01-15T14:05:41.591434,info,,      └─ Price: $0.095 | Outcome: Yes
+2026-01-15T14:05:41.591751,info,,      └─ Days to resolve: 349.5
+2026-01-15T14:05:41.592215,info,,      └─ Volume: $772 | Liquidity: $995
+2026-01-15T14:05:41.592377,info,,      └─ G-Score: 0.00666 (min: 0.0003)
+2026-01-15T14:05:41.850437,info,,      └─ Confidence: 53.0% = 50% base + [g>0.005: +3%]
+2026-01-15T14:05:41.850834,success,,"      └─ 🟢 DECISION: BUY (g=0.0067, ROI=933.6%)"
+2026-01-15T14:05:41.851157,info,,  📊 EVALUATING: Will Trump nominate Rick Rieder as the next F...
+2026-01-15T14:05:41.851393,info,,      └─ Price: $0.075 | Outcome: Yes
+2026-01-15T14:05:41.851597,info,,      └─ Days to resolve: 349.5
+2026-01-15T14:05:41.851812,info,,"      └─ Volume: $3,746,376 | Liquidity: $38,078"
+2026-01-15T14:05:41.852034,info,,      └─ G-Score: 0.00734 (min: 0.0003)
+2026-01-15T14:05:41.852254,info,,"      └─ Confidence: 73.0% = 50% base + [vol>100k: +12%, liq>10k: +8%, g>0.005: +3%]"
+2026-01-15T14:05:41.852549,success,,"      └─ 🟢 DECISION: STRONG BUY (g=0.0073, ROI=1208.7%, conf=73.0%)"
+2026-01-15T14:05:41.852745,info,,  📊 EVALUATING: Will the Bank of Canada announce no change at...
+2026-01-15T14:05:42.104095,info,,      └─ Price: $0.105 | Outcome: No
+2026-01-15T14:05:42.104750,info,,      └─ Days to resolve: 61.5
+2026-01-15T14:05:42.104953,info,,      └─ Volume: $665 | Liquidity: $994
+2026-01-15T14:05:42.105142,info,,      └─ G-Score: 0.03580 (min: 0.0003)
+2026-01-15T14:05:42.105342,info,,"      └─ Confidence: 69.7% = 50% base + [price-ok: +4%, time-ok: +2%, g>0.01: +5%, news: +9%]"
+2026-01-15T14:05:42.105618,success,,"      └─ 🟢 DECISION: BUY (g=0.0358, ROI=835.3%)"
+2026-01-15T14:05:42.106046,info,,──────────────────────────────────────────────────
+2026-01-15T14:05:42.106364,success,,📈 SCAN COMPLETE - Results:
+2026-01-15T14:05:42.106646,info,,   • Evaluated: 55 markets
+2026-01-15T14:05:42.106831,info,,   • Opportunities found: 9
+2026-01-15T14:05:42.367122,success,,   • BUY signals: 9
+2026-01-15T14:05:42.370178,info,,   • HOLD signals: 0
+2026-01-15T14:05:42.370476,info,,   • SKIP signals: 0
+2026-01-15T14:05:42.372462,info,,   • Skipped (already owned): 0
+2026-01-15T14:05:42.375639,info,,   • Open positions: 39
+2026-01-15T14:05:42.376075,info,,──────────────────────────────────────────────────
+2026-01-15T14:05:42.376421,info,,🏆 TOP 5 OPPORTUNITIES:
+2026-01-15T14:05:42.376656,info,,   1. 🟢 G=0.1627 | ROI=792.9% | Conf=67.0% | $0.11
+2026-01-15T14:05:42.376822,info,,      └─ Will three people dissent the January Fed decision?...
+2026-01-15T14:05:42.376977,info,,   2. 🟢 G=0.1365 | ROI=357.8% | Conf=79.0% | $0.21
+2026-01-15T14:05:42.630049,info,,      └─ Will Arsenal FC vs. Manchester United FC end in a draw?...
+2026-01-15T14:05:42.630663,info,,   3. 🟢 G=0.0372 | ROI=2586.9% | Conf=73.8% | $0.04
+2026-01-15T14:05:42.630839,info,,      └─ Will Viktor Hovland win the 2026 Masters tournament?...
+2026-01-15T14:05:42.630945,info,,   4. 🟢 G=0.0358 | ROI=835.3% | Conf=69.7% | $0.10
+2026-01-15T14:05:42.631074,info,,      └─ Will the Bank of Canada announce no change at the March meet...
+2026-01-15T14:05:42.631215,info,,   5. 🟢 G=0.0341 | ROI=1208.7% | Conf=77.1% | $0.07
+2026-01-15T14:05:42.633977,info,,      └─ 2026 U.S. Senate Election: Democrats flip Republicans by Mar...
+2026-01-15T14:05:42.636113,info,,══════════════════════════════════════════════════
+2026-01-15T14:05:42.637704,info,,💰 TRADE ATTEMPT: Will three people dissent the January Fe...
+2026-01-15T14:05:42.638931,info,,   └─ Type: LONG | Price: $0.110 | G=0.1627
+2026-01-15T14:05:42.892786,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:42.892967,info,,Skip: Slippage too high for Will three people dissent... (135.2% > 5.0%)
+2026-01-15T14:05:42.893061,info,,💰 TRADE ATTEMPT: Will Arsenal FC vs. Manchester United FC...
+2026-01-15T14:05:42.893157,info,,   └─ Type: LONG | Price: $0.215 | G=0.1365
+2026-01-15T14:05:42.893251,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:42.893376,info,,Skip: Slippage too high for Will Arsenal FC vs. Manch... (8.0% > 5.0%)
+2026-01-15T14:05:42.893503,info,,💰 TRADE ATTEMPT: Will Viktor Hovland win the 2026 Masters...
+2026-01-15T14:05:42.893652,info,,   └─ Type: LONG | Price: $0.036 | G=0.0372
+2026-01-15T14:05:42.893810,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:42.893957,info,,Skip: Slippage too high for Will Viktor Hovland win t... (672.4% > 5.0%)
+2026-01-15T14:05:43.155274,info,,💰 TRADE ATTEMPT: Will the Bank of Canada announce no chan...
+2026-01-15T14:05:43.155591,info,,   └─ Type: LONG | Price: $0.105 | G=0.0358
+2026-01-15T14:05:43.155694,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:43.155776,info,,Skip: Slippage too high for Will the Bank of Canada a... (155.3% > 5.0%)
+2026-01-15T14:05:43.155855,info,,💰 TRADE ATTEMPT: 2026 U.S. Senate Election: Democrats fli...
+2026-01-15T14:05:43.155950,info,,   └─ Type: LONG | Price: $0.075 | G=0.0341
+2026-01-15T14:05:43.156097,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:43.156245,info,,Skip: Slippage too high for 2026 U.S. Senate Election... (16.1% > 5.0%)
+2026-01-15T14:05:43.156693,info,,💰 TRADE ATTEMPT: Will Phil Murphy announce a Presidential...
+2026-01-15T14:05:43.156849,info,,   └─ Type: LONG | Price: $0.032 | G=0.0098
+2026-01-15T14:05:43.420369,info,,   └─ 💵 Size: $25.00 (TEST) | Cash: $2920.81
+2026-01-15T14:05:43.420690,info,,Skip: Slippage too high for Will Phil Murphy announce... (30.7% > 5.0%)
+2026-01-15T14:05:43.420864,info,,💰 TRADE ATTEMPT: Zohran Mamdani citizenship revoked befor...
+2026-01-15T14:05:43.420982,info,,   └─ Type: LONG | Price: $0.043 | G=0.0089
+2026-01-15T14:05:43.421073,info,,   └─ 💵 Size: $25.00 (TEST) | Cash: $2920.81
+2026-01-15T14:05:43.421163,info,,Skip: Slippage too high for Zohran Mamdani citizenshi... (15.3% > 5.0%)
+2026-01-15T14:05:43.421254,info,,💰 TRADE ATTEMPT: Will Trump nominate Rick Rieder as the n...
+2026-01-15T14:05:43.421345,info,,   └─ Type: LONG | Price: $0.075 | G=0.0073
+2026-01-15T14:05:43.421477,info,,   └─ 💵 Size: $292.08 (LONG) | Cash: $2920.81
+2026-01-15T14:05:43.421597,info,,Skip: Slippage too high for Will Trump nominate Rick ... (7.1% > 5.0%)
+2026-01-15T14:05:43.685053,info,,💰 TRADE ATTEMPT: Nord Stream pipeline turned on before 20...
+2026-01-15T14:05:43.685253,info,,   └─ Type: LONG | Price: $0.095 | G=0.0067
+2026-01-15T14:05:43.685354,info,,   └─ 💵 Size: $25.00 (TEST) | Cash: $2920.81
+2026-01-15T14:05:43.685435,info,,Skip: Slippage too high for Nord Stream pipeline turn... (12.5% > 5.0%)
+2026-01-15T14:05:51.783503,info,,"📉 Price move: US strikes Iran by January 31, 2026... $0.405→$0.365 (+9.9%) | P&L: -9.9%"
+2026-01-15T14:06:02.208326,info,,"📉 Price move: Will Bitcoin dip to $85,000 in Janu... $0.115→$0.105 (+8.7%) | P&L: -20.0%"

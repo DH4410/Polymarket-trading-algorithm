@@ -1,0 +1,207 @@
+======================================================================
+MONTE CARLO SIMULATION ANALYSIS REPORT
+======================================================================
+
+Generated: 2026-01-15 20:35:47
+Simulation ID: mc_20260115_193516
+
+----------------------------------------------------------------------
+CONFIGURATION
+----------------------------------------------------------------------
+Number of Bots: 500
+Number of Markets: 200
+Simulation Days: 90
+Initial Capital: €200.0
+
+----------------------------------------------------------------------
+SUMMARY STATISTICS
+----------------------------------------------------------------------
+Average Return: -22.03%
+Median Return: -27.07%
+Standard Deviation: 34.52%
+Best Return: 212.45%
+Worst Return: -92.46%
+
+Profitable Bots: 81 (16.2%)
+Average Trades per Bot: 187.9
+Average Win Rate: 36.2%
+
+----------------------------------------------------------------------
+STRATEGY TYPE PERFORMANCE
+----------------------------------------------------------------------
+
+VALUE
+  Count: 62 bots
+  Avg Return: 2.94%
+  Median Return: 2.11%
+  Std Dev: 42.02%
+  Best: 201.57% | Worst: -59.40%
+  Profitable: 51.6%
+
+HIGH_ROLLER
+  Count: 62 bots
+  Avg Return: -13.54%
+  Median Return: -34.79%
+  Std Dev: 59.52%
+  Best: 212.45% | Worst: -87.13%
+  Profitable: 25.8%
+
+CONSERVATIVE
+  Count: 63 bots
+  Avg Return: -17.10%
+  Median Return: -16.78%
+  Std Dev: 14.74%
+  Best: 12.04% | Worst: -53.83%
+  Profitable: 12.7%
+
+BALANCED
+  Count: 63 bots
+  Avg Return: -21.97%
+  Median Return: -27.60%
+  Std Dev: 22.38%
+  Best: 39.24% | Worst: -65.12%
+  Profitable: 17.5%
+
+DIVERSIFIER
+  Count: 62 bots
+  Avg Return: -23.49%
+  Median Return: -19.42%
+  Std Dev: 15.55%
+  Best: 2.93% | Worst: -53.43%
+  Profitable: 3.2%
+
+MOMENTUM
+  Count: 63 bots
+  Avg Return: -28.78%
+  Median Return: -27.81%
+  Std Dev: 21.32%
+  Best: 40.38% | Worst: -68.13%
+  Profitable: 7.9%
+
+AGGRESSIVE
+  Count: 63 bots
+  Avg Return: -34.41%
+  Median Return: -46.39%
+  Std Dev: 37.20%
+  Best: 93.74% | Worst: -92.46%
+  Profitable: 11.1%
+
+SCALPER
+  Count: 62 bots
+  Avg Return: -39.69%
+  Median Return: -40.61%
+  Std Dev: 14.97%
+  Best: -4.42% | Worst: -70.37%
+  Profitable: 0.0%
+
+----------------------------------------------------------------------
+TOP 10 PERFORMERS
+----------------------------------------------------------------------
+
+#1. Bot 63 (high_roller)
+    Return: 212.45%
+    Portfolio Value: €624.89
+    Trades: 93 | Win Rate: 40.9%
+
+#2. Bot 352 (value)
+    Return: 201.57%
+    Portfolio Value: €603.14
+    Trades: 32 | Win Rate: 43.8%
+
+#3. Bot 259 (high_roller)
+    Return: 133.60%
+    Portfolio Value: €467.21
+    Trades: 46 | Win Rate: 47.8%
+
+#4. Bot 3 (high_roller)
+    Return: 126.69%
+    Portfolio Value: €453.37
+    Trades: 48 | Win Rate: 52.1%
+
+#5. Bot 189 (high_roller)
+    Return: 119.73%
+    Portfolio Value: €439.46
+    Trades: 39 | Win Rate: 48.7%
+
+#6. Bot 263 (high_roller)
+    Return: 99.08%
+    Portfolio Value: €398.17
+    Trades: 69 | Win Rate: 52.2%
+
+#7. Bot 67 (aggressive)
+    Return: 93.74%
+    Portfolio Value: €387.47
+    Trades: 124 | Win Rate: 36.3%
+
+#8. Bot 149 (aggressive)
+    Return: 93.15%
+    Portfolio Value: €386.29
+    Trades: 82 | Win Rate: 42.7%
+
+#9. Bot 269 (value)
+    Return: 87.56%
+    Portfolio Value: €375.12
+    Trades: 58 | Win Rate: 39.7%
+
+#10. Bot 74 (aggressive)
+    Return: 77.73%
+    Portfolio Value: €355.47
+    Trades: 78 | Win Rate: 43.6%
+
+----------------------------------------------------------------------
+BOTTOM 10 PERFORMERS
+----------------------------------------------------------------------
+
+#1. Bot 463 (scalper)
+    Return: -67.13%
+    Portfolio Value: €65.75
+    Trades: 777 | Win Rate: 29.3%
+
+#2. Bot 147 (aggressive)
+    Return: -68.02%
+    Portfolio Value: €63.96
+    Trades: 143 | Win Rate: 28.7%
+
+#3. Bot 465 (momentum)
+    Return: -68.13%
+    Portfolio Value: €63.73
+    Trades: 122 | Win Rate: 36.1%
+
+#4. Bot 301 (high_roller)
+    Return: -68.14%
+    Portfolio Value: €63.72
+    Trades: 75 | Win Rate: 37.3%
+
+#5. Bot 257 (aggressive)
+    Return: -68.18%
+    Portfolio Value: €63.65
+    Trades: 153 | Win Rate: 21.6%
+
+#6. Bot 254 (aggressive)
+    Return: -69.06%
+    Portfolio Value: €61.88
+    Trades: 148 | Win Rate: 25.0%
+
+#7. Bot 361 (high_roller)
+    Return: -69.52%
+    Portfolio Value: €60.96
+    Trades: 64 | Win Rate: 32.8%
+
+#8. Bot 190 (scalper)
+    Return: -70.37%
+    Portfolio Value: €59.26
+    Trades: 641 | Win Rate: 39.8%
+
+#9. Bot 468 (high_roller)
+    Return: -87.13%
+    Portfolio Value: €25.74
+    Trades: 56 | Win Rate: 25.0%
+
+#10. Bot 160 (aggressive)
+    Return: -92.46%
+    Portfolio Value: €15.09
+    Trades: 261 | Win Rate: 30.3%
+
+======================================================================
+END OF REPORT
+======================================================================

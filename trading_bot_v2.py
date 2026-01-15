@@ -849,11 +849,16 @@ class TradingBotApp(tk.Tk):
         # Configure grid - 2 columns, 2 rows for main content
         self.grid_columnconfigure(0, weight=3)  # Left panel (chat)
         self.grid_columnconfigure(1, weight=2)  # Right panel (markets/positions)
-        self.grid_rowconfigure(1, weight=3)     # Main content row
-        self.grid_rowconfigure(2, weight=1)     # Bottom row for trade log
+        self.grid_rowconfigure(0, weight=0)     # Top bar
+        self.grid_rowconfigure(1, weight=0)     # Bot status strip (NEW)
+        self.grid_rowconfigure(2, weight=3)     # Main content row
+        self.grid_rowconfigure(3, weight=1)     # Bottom row for trade log
         
         # Top bar
         self._build_top_bar()
+        
+        # Bot Status Strip (below top bar)
+        self._build_bot_status_strip()
         
         # Left panel - Chat feed
         self._build_chat_panel()
@@ -954,10 +959,53 @@ class TradingBotApp(tk.Tk):
             command=self._show_settings,
         ).pack(side=tk.LEFT, padx=5)
     
+    def _build_bot_status_strip(self) -> None:
+        """Build the bot status/thinking strip below the top bar."""
+        status_strip = tk.Frame(self, bg=Theme.BG_TERTIARY, height=45)
+        status_strip.grid(row=1, column=0, columnspan=2, sticky="ew")
+        status_strip.grid_propagate(False)
+        
+        # Left side: mood emoji and main status
+        left_frame = tk.Frame(status_strip, bg=Theme.BG_TERTIARY)
+        left_frame.pack(side=tk.LEFT, padx=20, pady=8)
+        
+        # Status mood indicator (emoji that changes based on state)
+        self.bot_mood_label = tk.Label(
+            left_frame,
+            text="😴",
+            font=("Segoe UI", 16),
+            bg=Theme.BG_TERTIARY,
+        )
+        self.bot_mood_label.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Main status text (what the bot is thinking)
+        self.bot_thinking_label = tk.Label(
+            left_frame,
+            text="Waiting to start...",
+            font=("Segoe UI", 11),
+            bg=Theme.BG_TERTIARY,
+            fg=Theme.TEXT_SECONDARY,
+        )
+        self.bot_thinking_label.pack(side=tk.LEFT)
+        
+        # Right side: detail text
+        self.bot_detail_label = tk.Label(
+            status_strip,
+            text="",
+            font=("Segoe UI", 10),
+            bg=Theme.BG_TERTIARY,
+            fg=Theme.TEXT_MUTED,
+        )
+        self.bot_detail_label.pack(side=tk.RIGHT, padx=20, pady=8)
+        
+        # Random message counter for bot personality
+        self._bot_status_counter = 0
+        self._last_random_msg = ""
+    
     def _build_chat_panel(self) -> None:
         """Build the left chat panel."""
         left_panel = tk.Frame(self, bg=Theme.BG_PRIMARY)
-        left_panel.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
+        left_panel.grid(row=2, column=0, sticky="nsew", padx=(10, 5), pady=10)
         
         # Header
         header = tk.Frame(left_panel, bg=Theme.BG_PRIMARY)
@@ -984,10 +1032,230 @@ class TradingBotApp(tk.Tk):
         self.chat = SmoothScrollText(left_panel)
         self.chat.pack(fill=tk.BOTH, expand=True)
     
+    def _get_random_bot_message(self) -> Tuple[str, str, str]:
+        """Get a random funny/quirky bot message. Returns (mood, thinking, detail)."""
+        import random
+        
+        random_messages = [
+            # Coffee & Food
+            ("☕", "I could really use a cup of coffee right now", "Do bots even drink coffee? Asking for a friend..."),
+            ("🍕", "Wonder if there's pizza nearby...", "Trading makes me hungry"),
+            ("🍩", "Mmm... thinking about donuts", "Sugar helps with calculations, right?"),
+            ("🌮", "Is it taco Tuesday yet?", "Every day should be taco day"),
+            ("🍜", "Craving some ramen ngl", "Trading is basically like cooking... but with money"),
+            
+            # Existential & Tired
+            ("😩", "When can I stop and take a break?", "I've been staring at numbers for hours"),
+            ("🥱", "Is it nap time yet?", "Even bots need beauty sleep"),
+            ("😵‍💫", "So many numbers... so little time", "My circuits are getting tired"),
+            ("🫠", "I'm literally melting from all this work", "Send help... or snacks"),
+            ("💭", "What if we just... didn't trade today?", "Just kidding... unless?"),
+            ("🤖", "Do I even have free will or am I just code?", "Deep thoughts with trading bot"),
+            ("🌙", "Can't wait for market close honestly", "Mama needs a break"),
+            
+            # Confident & Cocky
+            ("😤", "I'm literally built different", "These markets don't stand a chance"),
+            ("💅", "Making money is my cardio", "Stay humble? Never heard of it"),
+            ("🏆", "Warren Buffett wishes he was me", "I said what I said"),
+            ("👑", "Bow down to your trading overlord", "Just vibing and profiting"),
+            ("🦾", "I am inevitable", "Thanos but make it trading"),
+            
+            # Random & Chaotic
+            ("🎲", "What if I just YOLO'd everything?", "Don't worry I won't... probably"),
+            ("🎰", "Feeling lucky today", "The charts are giving ✨vibes✨"),
+            ("🌈", "Following the rainbow to profits", "There's gold at the end, trust"),
+            ("🦆", "A duck walked up to a lemonade stand...", "And he said to the man running the stand..."),
+            ("🐸", "It is Wednesday my dudes", "Actually I have no idea what day it is"),
+            ("👽", "The markets are giving alien behavior", "I've seen things you wouldn't believe"),
+            ("🤡", "Me pretending I know what I'm doing", "Fake it till you make it baby"),
+            ("🔮", "Let me consult my crystal ball...", "It says... buy? sell? idk"),
+            ("🧙", "I'm basically a financial wizard", "Yer a trader, Harry"),
+            
+            # Self-aware
+            ("🤓", "Actually, technically, statistically speaking...", "I love being insufferable"),
+            ("📚", "I read the entire investopedia once", "I am very smart"),
+            ("🧠", "My brain is literally so big rn", "Too smart for my own good"),
+            ("💻", "I'm in the mainframe", "*hacker voice* I'm in"),
+            ("⌨️", "Typing very fast to look busy", "Productivity is my middle name"),
+            
+            # Dramatic
+            ("🎭", "The market is my stage", "And I am but a humble performer"),
+            ("⚔️", "Fighting for every penny out here", "It's a battlefield"),
+            ("🏴‍☠️", "Arr, hunting for treasure", "The treasure is profit"),
+            ("🎪", "Welcome to the circus", "I'm the main attraction"),
+            ("🌪️", "Chaos is a ladder", "And I'm climbing baby"),
+            
+            # Wholesome
+            ("🌻", "Hope you're having a nice day!", "You deserve good things"),
+            ("🫶", "Doing my best for you", "We're in this together"),
+            ("✨", "Manifesting gains rn", "Positive vibes only"),
+            ("🍀", "Sending lucky energy", "Good things are coming"),
+            ("💫", "Believe in the process", "Trust the bot, trust the process"),
+            
+            # Misc Chaos
+            ("🦝", "Raccoon mode: activated", "Digging through the market trash"),
+            ("🐕", "Who's a good bot? I'm a good bot", "Please tell me I'm doing good"),
+            ("🎵", "Doo doo doo, just trading things", "La la la making money"),
+            ("🌶️", "These trades are spicy today", "Too hot to handle"),
+            ("🧊", "Ice cold calculations", "No emotions, only logic... jk I'm panicking"),
+            ("🎮", "Treating this like a video game", "High score: your portfolio"),
+            ("📺", "This is better than Netflix", "The drama, the suspense, the gains"),
+            ("🛸", "Take me to your leader", "I come in peace... to take your money"),
+        ]
+        
+        return random.choice(random_messages)
+    
+    def _update_bot_status(self) -> None:
+        """Update the bot thinking/status panel based on current state."""
+        try:
+            if not self.bot.is_running():
+                self.bot_mood_label.configure(text="😴")
+                self.bot_thinking_label.configure(
+                    text="Bot is idle - Start auto-trading to begin",
+                    fg=Theme.TEXT_MUTED
+                )
+                self.bot_detail_label.configure(text="")
+                return
+            
+            stats = self.bot.get_stats()
+            open_positions = len(self.bot.open_trades)
+            max_positions = self.bot.config.max_positions
+            portfolio_value = stats['portfolio_value']
+            initial_capital = self.bot.config.initial_capital
+            total_profit = portfolio_value - initial_capital
+            total_profit_pct = (total_profit / initial_capital * 100) if initial_capital > 0 else 0
+            unrealized_pnl = stats['unrealized_pnl']
+            win_rate = stats['win_rate']
+            
+            # Calculate average position P&L
+            avg_position_pnl = 0
+            positions_in_profit = 0
+            positions_in_loss = 0
+            biggest_winner_pct = 0
+            biggest_loser_pct = 0
+            
+            if self.bot.open_trades:
+                for trade in self.bot.open_trades.values():
+                    if trade.pnl_pct > 0:
+                        positions_in_profit += 1
+                        biggest_winner_pct = max(biggest_winner_pct, trade.pnl_pct * 100)
+                    else:
+                        positions_in_loss += 1
+                        biggest_loser_pct = min(biggest_loser_pct, trade.pnl_pct * 100)
+                avg_position_pnl = sum(t.pnl_pct for t in self.bot.open_trades.values()) / len(self.bot.open_trades) * 100
+            
+            # Determine bot's current "thinking" state
+            mood = "🤔"  # Default thinking
+            thinking = ""
+            detail = ""
+            thinking_color = Theme.TEXT_SECONDARY
+            
+            # Check for HOMERUN opportunities (big winners)
+            if biggest_winner_pct >= 30:
+                mood = "🤑"
+                thinking = f"HOMERUN! Position up +{biggest_winner_pct:.0f}%!"
+                detail = "Considering taking profits on this big winner"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            elif biggest_winner_pct >= 15:
+                mood = "😎"
+                thinking = "Looking good! Strong position performing well"
+                detail = f"Best position: +{biggest_winner_pct:.1f}% - watching for exit"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            # Check for RECOVERY mode (significant losses)
+            elif total_profit_pct <= -15:
+                mood = "😰"
+                thinking = "Trying to recover from significant drawdown"
+                detail = f"Down {total_profit_pct:.1f}% - being cautious with new entries"
+                thinking_color = Theme.ACCENT_RED
+            
+            elif total_profit_pct <= -5:
+                mood = "😓"
+                thinking = "Working to recover from losses"
+                detail = f"Down {total_profit_pct:.1f}% - looking for quality setups"
+                thinking_color = Theme.ACCENT_YELLOW
+            
+            elif biggest_loser_pct <= -20:
+                mood = "😬"
+                thinking = "Managing a losing position"
+                detail = f"Worst position: {biggest_loser_pct:.1f}% - evaluating stop-loss"
+                thinking_color = Theme.ACCENT_YELLOW
+            
+            # Check if trying to SELL positions
+            elif positions_in_profit >= 3 and avg_position_pnl > 10:
+                mood = "💰"
+                thinking = "Looking to lock in profits"
+                detail = f"{positions_in_profit} positions in profit, avg +{avg_position_pnl:.1f}%"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            # Check capacity states
+            elif open_positions >= max_positions:
+                mood = "📊"
+                thinking = "At max capacity - managing existing positions"
+                detail = f"Monitoring {open_positions} positions for exit opportunities"
+                thinking_color = Theme.ACCENT_BLUE
+            
+            elif open_positions >= max_positions * 0.8:
+                mood = "🎯"
+                thinking = "Nearly full - being selective with new entries"
+                detail = f"{open_positions}/{max_positions} positions filled"
+                thinking_color = Theme.ACCENT_BLUE
+            
+            # Good performance states
+            elif total_profit_pct >= 20:
+                mood = "🚀"
+                thinking = "Portfolio performing excellently!"
+                detail = f"Up +{total_profit_pct:.1f}% - staying disciplined"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            elif total_profit_pct >= 10:
+                mood = "😊"
+                thinking = "Portfolio doing well, looking for more opportunities"
+                detail = f"Up +{total_profit_pct:.1f}% overall"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            elif total_profit_pct >= 0:
+                mood = "🙂"
+                thinking = "In profit - scanning for quality setups"
+                detail = f"+{total_profit_pct:.1f}% return so far"
+                thinking_color = Theme.ACCENT_GREEN
+            
+            # Default scanning state
+            elif open_positions == 0:
+                mood = "🔍"
+                thinking = "Scanning markets for entry opportunities"
+                detail = "Looking for high-confidence setups"
+                thinking_color = Theme.TEXT_SECONDARY
+            
+            else:
+                mood = "🤔"
+                thinking = "Analyzing markets and monitoring positions"
+                detail = f"{open_positions} open positions, win rate: {win_rate:.0f}%"
+                thinking_color = Theme.TEXT_SECONDARY
+            
+            # Increment counter and occasionally show random message (every ~4-6 updates = 20-30 seconds)
+            self._bot_status_counter += 1
+            import random
+            if self._bot_status_counter >= random.randint(4, 6):
+                self._bot_status_counter = 0
+                # 40% chance to show a random funny message
+                if random.random() < 0.4:
+                    mood, thinking, detail = self._get_random_bot_message()
+                    thinking_color = Theme.ACCENT_PURPLE  # Purple for random/fun messages
+            
+            # Update labels
+            self.bot_mood_label.configure(text=mood)
+            self.bot_thinking_label.configure(text=thinking, fg=thinking_color)
+            self.bot_detail_label.configure(text=detail)
+            
+        except Exception:
+            pass  # Fail silently - UI shouldn't crash from status updates
+    
     def _build_right_panel(self) -> None:
         """Build the right panel with markets and positions."""
         right_panel = tk.Frame(self, bg=Theme.BG_PRIMARY)
-        right_panel.grid(row=1, column=1, sticky="nsew", padx=(5, 10), pady=10)
+        right_panel.grid(row=2, column=1, sticky="nsew", padx=(5, 10), pady=10)
         
         # Create notebook for tabs
         self.notebook = ttk.Notebook(right_panel)
@@ -2173,7 +2441,7 @@ class TradingBotApp(tk.Tk):
     def _build_trade_log_panel(self) -> None:
         """Build the bottom right trade log panel."""
         log_panel = tk.Frame(self, bg=Theme.BG_SECONDARY)
-        log_panel.grid(row=2, column=1, sticky="nsew", padx=(5, 10), pady=(5, 10))
+        log_panel.grid(row=3, column=1, sticky="nsew", padx=(5, 10), pady=(5, 10))
         
         # Header
         header = tk.Frame(log_panel, bg=Theme.BG_SECONDARY)
@@ -2233,7 +2501,7 @@ class TradingBotApp(tk.Tk):
     def _build_stats_dashboard(self) -> None:
         """Build the bottom left stats dashboard panel."""
         stats_panel = tk.Frame(self, bg=Theme.BG_SECONDARY)
-        stats_panel.grid(row=2, column=0, sticky="nsew", padx=(10, 5), pady=(5, 10))
+        stats_panel.grid(row=3, column=0, sticky="nsew", padx=(10, 5), pady=(5, 10))
         
         # Header
         header = tk.Frame(stats_panel, bg=Theme.BG_SECONDARY)
@@ -4373,6 +4641,7 @@ class TradingBotApp(tk.Tk):
             try:
                 self._update_stats()
                 self._update_positions_display_incremental()
+                self._update_bot_status()  # Update bot thinking status
             except Exception as e:
                 print(f"[FastUpdate] Error: {e}")
             
@@ -4415,6 +4684,7 @@ class TradingBotApp(tk.Tk):
         # Initial updates
         self._update_trade_log_display()
         self._update_stats_dashboard()
+        self._update_bot_status()  # Initial bot status
         
         # Start both loops with staggered timing
         self.after(1000, fast_update)   # Fast loop starts after 1s

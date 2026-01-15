@@ -1,0 +1,35 @@
+======================================================================
+STRATEGY RECOMMENDATIONS
+======================================================================
+
+🏆 BEST STRATEGY TYPE: VALUE
+   Average Return: 2.94%
+   Profitability Rate: 51.6%
+
+📊 MOST CONSISTENT: VALUE
+   Standard Deviation: 42.02%
+   Average Return: 2.94%
+
+----------------------------------------------------------------------
+COMMON TRAITS OF TOP PERFORMERS
+----------------------------------------------------------------------
+
+• Average Win Rate: 43.0%
+• Average Trade Count: 72
+
+• Most Common Strategy Types in Top 20:
+  - high_roller: 10 bots (50%)
+  - value: 6 bots (30%)
+  - aggressive: 4 bots (20%)
+
+----------------------------------------------------------------------
+KEY INSIGHTS
+----------------------------------------------------------------------
+
+❌ CONCERNING: Less than 40% of strategies were profitable
+   Significant strategy adjustments needed.
+
+📉 NEGATIVE AVERAGE RETURN: -22.0%
+   Strategy needs fundamental changes.
+
+======================================================================
